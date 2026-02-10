@@ -1,10 +1,10 @@
 require "test_helper"
-require "silk/ops/load"
+require "loomy/ops/load"
 
 class CachingTest < Minitest::Test
   def test_load_caching
     path = "test/assets/base.png"
-    op = Silk::Ops::Load.new(path)
+    op = Loomy::Ops::Load.new(path)
     
     context = { source_cache: {} }
     
@@ -20,10 +20,10 @@ class CachingTest < Minitest::Test
     path = "test/assets/base.png"
     
     # Op 1: Raw
-    op1 = Silk::Ops::Load.new(path)
+    op1 = Loomy::Ops::Load.new(path)
     
     # Op 2: With Target Size
-    op2 = Silk::Ops::Load.new(path, target_width: 100, target_height: 100)
+    op2 = Loomy::Ops::Load.new(path, target_width: 100, target_height: 100)
     
     context = { source_cache: {} }
     

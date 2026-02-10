@@ -1,20 +1,20 @@
 require "test_helper"
-require "silk/dsl/pipeline_builder"
+require "loomy/dsl/pipeline_builder"
 
 class StyleTest < Minitest::Test
   def setup
-    Silk.styles.clear
+    Loomy.styles.clear
   end
 
   def test_define_and_use_style
-    Silk.define_style :test_style do
+    Loomy.define_style :test_style do
       x 100
       y 50
       blend :add
     end
     
-    canvas = Silk::AST::Canvas.new(size: [100, 100])
-    builder = Silk::DSL::CanvasBuilder.new(canvas)
+    canvas = Loomy::AST::Canvas.new(size: [100, 100])
+    builder = Loomy::DSL::CanvasBuilder.new(canvas)
     
     builder.layer "test/assets/base.png" do
       use :test_style
@@ -28,8 +28,8 @@ class StyleTest < Minitest::Test
   end
 
   def test_undefined_style
-    canvas = Silk::AST::Canvas.new(size: [100, 100])
-    builder = Silk::DSL::CanvasBuilder.new(canvas)
+    canvas = Loomy::AST::Canvas.new(size: [100, 100])
+    builder = Loomy::DSL::CanvasBuilder.new(canvas)
     
     assert_raises ArgumentError do
       builder.layer "test/assets/base.png" do

@@ -17,7 +17,7 @@ class TrimTest < Minitest::Test
   def test_trim_enabled
     reference = "test/assets/references/trim_enabled.png"
     
-    image = Silk.generate(size: [200, 200]) do
+    image = Loomy.generate(size: [200, 200]) do
       layer "test/assets/trim_test_source.png", trim: true, x: 0, y: 0
     end
     
@@ -31,7 +31,7 @@ class TrimTest < Minitest::Test
   def test_trim_disabled
     reference = "test/assets/references/trim_disabled.png"
 
-    image = Silk.generate(size: [200, 200]) do
+    image = Loomy.generate(size: [200, 200]) do
       layer "test/assets/trim_test_source.png", trim: false, x: 0, y: 0
     end
     

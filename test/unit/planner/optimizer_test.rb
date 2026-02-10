@@ -1,16 +1,16 @@
 require "test_helper"
-require "silk/ops/load"
-require "silk/ops/resize"
-require "silk/ops/trim"
-require "silk/planner/optimizer"
+require "loomy/ops/load"
+require "loomy/ops/resize"
+require "loomy/ops/trim"
+require "loomy/planner/optimizer"
 
 class PlannerOptimizerTest < Minitest::Test
   def test_smart_load_injection
     # Scenario: Load -> Resize
-    load_op = Silk::Ops::Load.new("test.png")
-    resize_op = Silk::Ops::Resize.new(input: load_op, width: 100, height: 100, fit: :cover)
+    load_op = Loomy::Ops::Load.new("test.png")
+    resize_op = Loomy::Ops::Resize.new(input: load_op, width: 100, height: 100, fit: :cover)
     
-    optimizer = Silk::Planner::Optimizer.new
+    optimizer = Loomy::Planner::Optimizer.new
     optimizer.optimize(resize_op)
     
     # Check if target dimensions were pushed down to Load op
@@ -21,11 +21,11 @@ class PlannerOptimizerTest < Minitest::Test
 
   def test_smart_load_with_trim
     # Scenario: Load -> Trim -> Resize(Small)
-    load_op = Silk::Ops::Load.new("test.png")
-    trim_op = Silk::Ops::Trim.new(input: load_op)
-    resize_op = Silk::Ops::Resize.new(input: trim_op, width: 50, height: 50) # Small target
+    load_op = Loomy::Ops::Load.new("test.png")
+    trim_op = Loomy::Ops::Trim.new(input: load_op)
+    resize_op = Loomy::Ops::Resize.new(input: trim_op, width: 50, height: 50) # Small target
     
-    optimizer = Silk::Planner::Optimizer.new
+    optimizer = Loomy::Planner::Optimizer.new
     optimizer.optimize(resize_op)
     
     # Check if Load was optimized to load a safe thumbnail

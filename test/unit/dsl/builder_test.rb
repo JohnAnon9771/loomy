@@ -1,10 +1,10 @@
 require "test_helper"
-require "silk/dsl/pipeline_builder"
+require "loomy/dsl/pipeline_builder"
 
 class SmartDSLTest < Minitest::Test
   def test_block_attributes
-    canvas = Silk::AST::Canvas.new(size: [100, 100])
-    builder = Silk::DSL::CanvasBuilder.new(canvas)
+    canvas = Loomy::AST::Canvas.new(size: [100, 100])
+    builder = Loomy::DSL::CanvasBuilder.new(canvas)
     
     builder.layer "test/assets/base.png" do
       x 10
@@ -30,8 +30,8 @@ class SmartDSLTest < Minitest::Test
 
   def test_mixed_attributes
     # Verify kwargs + block overrides or merges
-    canvas = Silk::AST::Canvas.new(size: [100, 100])
-    builder = Silk::DSL::CanvasBuilder.new(canvas)
+    canvas = Loomy::AST::Canvas.new(size: [100, 100])
+    builder = Loomy::DSL::CanvasBuilder.new(canvas)
     
     # Block should override kwargs if we are simply setting properties on the node object that was created with kwargs.
     # Let's check logic:

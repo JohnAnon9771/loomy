@@ -1,4 +1,4 @@
-require "silk"
+require "loomy"
 require "minitest/autorun"
 require "vips"
 require "fileutils"

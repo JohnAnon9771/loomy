@@ -1,6 +1,6 @@
 require "benchmark/ips"
 $LOAD_PATH.unshift File.expand_path("lib", __dir__)
-require "silk"
+require "loomy"
 
 # Ensure assets are generated
 unless File.exist?("test/assets/base.png")
@@ -34,14 +34,14 @@ Benchmark.ips do |x|
   x.config(time: 5, warmup: 2)
 
   x.report("simple_composite") do
-    Silk.render("bench_output_simple.png", size: [1024, 1024]) do
+    Loomy.render("bench_output_simple.png", size: [1024, 1024]) do
       layer "test/assets/base.png"
       layer "test/assets/overlay.png", x: 200, y: 200
     end
   end
 
   x.report("complex_composite") do
-    Silk.render("bench_output_complex.png", size: [1024, 1024]) do
+    Loomy.render("bench_output_complex.png", size: [1024, 1024]) do
       layer "test/assets/base.png"
       layer "test/assets/overlay.png", x: 50, y: 50, blend: :multiply
       layer "test/assets/overlay.png", x: 400, y: 400, width: 200, height: 200, fit: :cover
@@ -51,7 +51,7 @@ Benchmark.ips do |x|
   end
 
   x.report("large_composite_4k") do
-    Silk.render("bench_output_large.png", size: [4200, 4800]) do
+    Loomy.render("bench_output_large.png", size: [4200, 4800]) do
       layer "test/assets/base_large.png"
       layer "test/assets/overlay_large.png", x: 500, y: 500
       layer "test/assets/overlay.png", x: 100, y: 100 # Mixing sizes
@@ -59,7 +59,7 @@ Benchmark.ips do |x|
   end
 
   x.report("trim_composite") do
-    Silk.render("bench_output_trim.png", size: [4200, 4800]) do
+    Loomy.render("bench_output_trim.png", size: [4200, 4800]) do
       layer "test/assets/base_large.png"
       # This image is 2000x2000 but only has 500x500 content. 
       # With trim: true, it should act like 500x500 image.

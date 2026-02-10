@@ -8,7 +8,7 @@ class MockupIntegrationTest < Minitest::Test
   end
 
   def test_full_mockup_pipeline
-    image = Silk.generate(size: [1000, 1000]) do
+    image = Loomy.generate(size: [1000, 1000]) do
       # 1. Base: Template
       layer "test/assets/base_large.png"
 

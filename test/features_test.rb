@@ -11,7 +11,7 @@ class FeaturesTest < Minitest::Test
 
   def test_basic_rendering
     output = "test_render_basic.png"
-    Silk.render(output, size: [800, 600]) do
+    Loomy.render(output, size: [800, 600]) do
       layer "test/assets/base.png"
     end
     
@@ -25,7 +25,7 @@ class FeaturesTest < Minitest::Test
   def test_transforms
     output = "test_render_transforms.png"
     # Test resize and position
-    Silk.render(output, size: [800, 600]) do
+    Loomy.render(output, size: [800, 600]) do
       layer "test/assets/base.png", width: 800, height: 600 # Implicit fill/stretch if logic implies? No, implementation default is contain?
       # Wait, default fit is nil -> 'resize' logic above might default to thumbnail which is contain.
       
@@ -42,7 +42,7 @@ class FeaturesTest < Minitest::Test
 
   def test_blend_modes
     output = "test_render_blend.png"
-    Silk.render(output, size: [500, 500]) do
+    Loomy.render(output, size: [500, 500]) do
       layer "test/assets/base.png" # Red
       layer "test/assets/blue_square.png", blend: :multiply
     end

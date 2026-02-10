@@ -4,7 +4,7 @@ class GroupsTest < Minitest::Test
   def test_nested_groups_and_effects
     reference = "test/assets/references/groups_output.png"
 
-    image = Silk.generate(size: [400, 400]) do
+    image = Loomy.generate(size: [400, 400]) do
       group x: 50, y: 50 do
         layer "test/assets/blue_square.png", width: 100, height: 100
         layer "test/assets/blue_square.png", x: 20, y: 20, width: 100, height: 100 do
