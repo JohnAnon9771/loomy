@@ -5,6 +5,10 @@ require "loomy/version"
 module Loomy
   class Error < StandardError; end
 
+  WRITE_OPTION_ALIASES = {
+    quality: :Q
+  }.freeze
+
   loader = Zeitwerk::Loader.for_gem
   loader.inflector.inflect(
     "dsl" => "DSL",
@@ -20,8 +24,13 @@ module Loomy
     end
 
     def render(output_path, **options, &block)
-      image = generate(**options, &block)
-      image.write_to_file(output_path)
+      image = generate(**options.slice(:size), &block)
+      image.write_to_file(output_path, **write_options(options))
+    end
+
+    def to_blob(format, **options, &block)
+      image = generate(**options.slice(:size), &block)
+      image.write_to_buffer(format, **write_options(options))
     end
 
     def styles
@@ -38,6 +47,12 @@ module Loomy
 
     def register_effect(klass, processor)
       effects[klass] = processor
+    end
+
+    private
+
+    def write_options(options)
+      options.except(:size).transform_keys { |k| WRITE_OPTION_ALIASES.fetch(k, k) }
     end
   end
 end
