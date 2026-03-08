@@ -23,9 +23,9 @@ class TrimTest < Minitest::Test
     
     assert_image_similar(reference, image)
     
-    # Pixel check for extra confidence
+    # Pixel check
     pixel = image.getpoint(0, 0)
-    assert_equal [255, 0, 0, 255], pixel
+    assert_equal [255, 0, 0, 255], pixel.map(&:to_i)
   end
 
   def test_trim_disabled
@@ -37,8 +37,7 @@ class TrimTest < Minitest::Test
     
     assert_image_similar(reference, image)
     
-    # Untrimmed image has transparent border at 0,0, composited over black background
     pixel = image.getpoint(0, 0)
-    assert_equal [0, 0, 0, 255], pixel
+    assert_equal [0, 0, 0, 0], pixel.map(&:to_i) # Now it should be transparent
   end
 end

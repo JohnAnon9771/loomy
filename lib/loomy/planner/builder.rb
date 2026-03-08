@@ -23,8 +23,7 @@ module Loomy
       def visit_canvas(node)
         pipeline = Ops::Pipeline.new(
           background_width: node.width,
-          background_height: node.height,
-          transparent: false
+          background_height: node.height
         )
 
         node.children.each do |layer|
@@ -57,8 +56,7 @@ module Loomy
 
         pipeline = Ops::Pipeline.new(
           background_width: node.width || parent_w,
-          background_height: node.height || parent_h,
-          transparent: true
+          background_height: node.height || parent_h
         )
 
         node.children.each do |child|

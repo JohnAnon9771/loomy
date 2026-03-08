@@ -3,13 +3,12 @@ require_relative "base"
 module Loomy
   module Ops
     class Pipeline < Base
-      attr_reader :layers, :background_width, :background_height, :transparent
+      attr_reader :layers, :background_width, :background_height
 
-      def initialize(background_width:, background_height:, transparent: false)
+      def initialize(background_width:, background_height:)
         super(input: nil)
         @background_width = background_width
         @background_height = background_height
-        @transparent = transparent
         @layers = [] # Array of { op: Op, x: int, y: int, blend: symbol }
       end
 
@@ -18,35 +17,48 @@ module Loomy
       end
 
       def call(context = nil)
-        bg = Vips::Image.black(
-          @background_width,
-          @background_height,
-          bands: 3
-        ).copy(interpretation: :srgb)
-        
-        bg = @transparent ? bg.bandjoin(0) : bg.bandjoin(255)
+        rendered = render_layers(context)
+        w, h     = canvas_size(rendered)
+        canvas   = transparent_background(w, h)
 
-        overlays = []
-        modes = []
-        xs = []
-        ys = []
+        return canvas if rendered.empty?
 
-        @layers.each do |layer_def|
-           img = layer_def[:op].call(context)
+        values = ->(layer) { layer.values_at(:image, :blend, :x, :y) }
+        images, modes, xs, ys = rendered.map(&values).transpose
+        canvas.composite(images, modes, x: xs, y: ys)
+      end
 
-           # Ensure sRGB
-           if img.bands >= 3 && img.interpretation == :multiband
-             img = img.copy(interpretation: :srgb)
-           end
+      private
 
-           overlays << img
-           modes << (layer_def[:blend] || :over)
-           xs << (layer_def[:x] || 0)
-           ys << (layer_def[:y] || 0)
+      def render_layers(context)
+        @layers.map do |layer|
+          {
+            image: ensure_srgb(layer[:op].call(context)),
+            blend: layer[:blend] || :over,
+            x:     layer[:x]     || 0,
+            y:     layer[:y]     || 0
+          }
         end
+      end
 
-        return bg if overlays.empty?
-        bg.composite(overlays, modes, x: xs, y: ys)
+      def canvas_size(rendered)
+        [
+          @background_width  || rendered.map { |l| l[:x] + l[:image].width }.max  || 1,
+          @background_height || rendered.map { |l| l[:y] + l[:image].height }.max || 1
+        ]
+      end
+
+      def transparent_background(w, h)
+        Vips::Image
+          .black(w, h, bands: 3)
+          .copy(interpretation: :srgb)
+          .bandjoin(0)
+      end
+
+      def ensure_srgb(img)
+        return img unless img.bands >= 3 && img.interpretation == :multiband
+
+        img.copy(interpretation: :srgb)
       end
     end
   end

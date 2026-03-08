@@ -107,6 +107,7 @@ module Loomy
       
       def resolve_dim(value, total)
         return value unless value.is_a?(String) && value.end_with?("%")
+        return value if total.nil?
         
         (total * (value.to_f / 100.0)).round
       end
