@@ -4,11 +4,11 @@ module Loomy
   module AST
     class Canvas < Node
       def width
-        properties[:size][0]
+        properties[:size]&.at(0)
       end
 
       def height
-        properties[:size][1]
+        properties[:size]&.at(1)
       end
 
       def accept(visitor)
