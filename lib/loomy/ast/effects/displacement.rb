@@ -1,5 +1,3 @@
-require_relative '../effect'
-
 module Loomy
   module AST
     module Effects

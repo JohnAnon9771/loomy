@@ -1,5 +1,3 @@
-require_relative "../ast/node"
-
 module Loomy
   module DSL
     class LayerBuilder

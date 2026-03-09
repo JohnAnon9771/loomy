@@ -1,5 +1,3 @@
-require_relative "base"
-
 module Loomy
   module Ops
     class EffectOp < Base

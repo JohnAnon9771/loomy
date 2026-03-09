@@ -1,5 +1,3 @@
-require_relative 'node'
-
 module Loomy
   module AST
     class Group < Node

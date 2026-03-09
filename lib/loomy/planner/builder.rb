@@ -1,14 +1,3 @@
-require "loomy/ast/visitor"
-require "loomy/ops/base"
-require "loomy/ops/load"
-require "loomy/ops/solid"
-require "loomy/ops/text"
-require "loomy/ops/gradient"
-require "loomy/ops/trim"
-require "loomy/ops/resize"
-require "loomy/ops/effect_op"
-require "loomy/ops/pipeline"
-
 module Loomy
   module Planner
     class Builder < AST::Visitor

@@ -1,5 +1,3 @@
-require_relative 'visitor'
-
 module Loomy
   module AST
     class Optimizer < Visitor

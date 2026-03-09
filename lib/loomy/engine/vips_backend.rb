@@ -1,6 +1,3 @@
-require "vips"
-require "loomy/planner/builder"
-
 module Loomy
   module Engine
     class VipsBackend

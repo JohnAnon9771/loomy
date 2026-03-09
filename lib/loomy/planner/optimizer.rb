@@ -1,7 +1,3 @@
-require "loomy/ops/load"
-require "loomy/ops/resize"
-require "loomy/ops/trim"
-
 module Loomy
   module Planner
     class Optimizer
