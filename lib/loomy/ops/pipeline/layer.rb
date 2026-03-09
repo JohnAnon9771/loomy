@@ -2,84 +2,82 @@ module Loomy
   module Ops
     class Pipeline < Base
       class Layer
-        attr_reader :image, :x, :y
+        attr_reader :image, :props
 
         def initialize(op, props)
           @op    = op
           @props = props
-          @x     = props[:x] || 0
-          @y     = props[:y] || 0
         end
 
-        # Loads the image header/graph and returns self for chaining
         def prepare(context)
           @image = ensure_srgb(@op.call(context))
           self
         end
 
-        # Resolves fills and semantic positioning based on parent dimensions
         def resolve(pw, ph)
-          apply_fill!(pw, ph)
-          calculate_coordinates!(pw, ph)
-          [@image, blend, @x, @y]
+          img  = apply_fill(@image, pw, ph)
+          x, y = calculate_coordinates(img, pw, ph)
+          [img, blend, x, y]
         end
 
-        def max_x = @x + @image.width
-        def max_y = @y + @image.height
+        def x     = @props[:x] || 0
+        def y     = @props[:y] || 0
+        def max_x = x + @image.width
+        def max_y = y + @image.height
         def blend = @props[:blend] || :over
 
         private
 
-        def apply_fill!(pw, ph)
-          return unless @props[:width] == :fill || @props[:height] == :fill
+        def apply_fill(img, pw, ph)
+          return img unless @props[:width] == :fill || @props[:height] == :fill
 
-          target_w = @props[:width]  == :fill ? pw : @image.width
-          target_h = @props[:height] == :fill ? ph : @image.height
-          @image = @image.thumbnail_image(target_w, height: target_h, size: :both)
+          tw = @props[:width]  == :fill ? pw : img.width
+          th = @props[:height] == :fill ? ph : img.height
+          img.thumbnail_image(tw, height: th, size: :both)
         end
 
-        def calculate_coordinates!(pw, ph)
-          if @props[:anchor]
-            @x, @y = resolve_anchor(pw, ph)
-          else
-            @x = resolve_align(pw)  if @props[:align]
-            @y = resolve_valign(ph) if @props[:valign]
-          end
+        def calculate_coordinates(img, pw, ph)
+          return resolve_anchor(img, pw, ph) if @props[:anchor]
+
+          [
+            @props[:align]  ? resolve_align(img, pw)  : x,
+            @props[:valign] ? resolve_valign(img, ph) : y
+          ]
         end
 
-        def resolve_align(pw)
+        def resolve_align(img, pw)
           case @props[:align]
-          when :center then (pw - @image.width) / 2 + @props[:offset_x]
-          when :right  then pw - @image.width - @props[:offset_x]
-          when :left   then @props[:offset_x]
-          else @x
+          when :center then (pw - img.width) / 2 + @props[:offset_x].to_i
+          when :right  then pw - img.width - @props[:offset_x].to_i
+          when :left   then @props[:offset_x].to_i
+          else x
           end
         end
 
-        def resolve_valign(ph)
+        def resolve_valign(img, ph)
           case @props[:valign]
-          when :middle then (ph - @image.height) / 2 + @props[:offset_y]
-          when :bottom then ph - @image.height - @props[:offset_y]
-          when :top    then @props[:offset_y]
-          else @y
+          when :middle then (ph - img.height) / 2 + @props[:offset_y].to_i
+          when :bottom then ph - img.height - @props[:offset_y].to_i
+          when :top    then @props[:offset_y].to_i
+          else y
           end
         end
 
-        def resolve_anchor(pw, ph)
+        def resolve_anchor(img, pw, ph)
           anchors = {
-            right:  ->(total, img, off) { total - img - off },
-            center: ->(total, img, off) { (total - img) / 2 + off },
-            bottom: ->(total, img, off) { total - img - off },
-            middle: ->(total, img, off) { (total - img) / 2 + off }
+            right:  ->(total, iw, off) { total - iw - off },
+            center: ->(total, iw, off) { (total - iw) / 2 + off },
+            bottom: ->(total, ih, off) { total - ih - off },
+            middle: ->(total, ih, off) { (total - ih) / 2 + off }
           }
 
           str = @props[:anchor].to_s
           ax, ay = str[/right|center/], str[/bottom|middle/]
 
-          x = ax ? anchors[ax.to_sym].call(pw, @image.width, @props[:offset_x]) : @props[:offset_x]
-          y = ay ? anchors[ay.to_sym].call(ph, @image.height, @props[:offset_y]) : @props[:offset_y]
+          res_x = ax ? anchors[ax.to_sym].call(pw, img.width, @props[:offset_x].to_i) : @props[:offset_x].to_i
+          res_y = ay ? anchors[ay.to_sym].call(ph, img.height, @props[:offset_y].to_i) : @props[:offset_y].to_i
           
-          [x, y]
+          [res_x, res_y]
         end
 
         def ensure_srgb(img)
