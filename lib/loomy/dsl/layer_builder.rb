@@ -1,5 +1,3 @@
-require_relative "../ast/node"
-
 module Loomy
   module DSL
     class LayerBuilder
@@ -10,7 +8,7 @@ module Loomy
       def evaluate(&block)
         instance_eval(&block) if block_given?
       end
-
+      
       # Geometry & Composition
       def x(v)          = @layer.properties[:x] = v
       def y(v)          = @layer.properties[:y] = v
@@ -18,8 +16,19 @@ module Loomy
       def height(v)     = @layer.properties[:height] = v
       def fit(v)        = @layer.properties[:fit] = v
       def blend(v)      = @layer.properties[:blend] = v
-      alias_method :blend_mode, :blend
       def trim(v)       = @layer.properties[:trim] = v
+      alias_method :blend_mode, :blend
+
+      # Semantic Layout
+      def align(v)      = @layer.properties[:align] = v
+      def valign(v)     = @layer.properties[:valign] = v
+      def anchor(v)     = @layer.properties[:anchor] = v
+      def offset_x(v)   = @layer.properties[:offset_x] = v
+      def offset_y(v)   = @layer.properties[:offset_y] = v
+      def offset(v)
+        @layer.properties[:offset_x] = v.is_a?(Array) ? v[0] : v
+        @layer.properties[:offset_y] = v.is_a?(Array) ? v[1] : v
+      end
 
       # Procedural Sources
       def source(v)     = @layer.properties[:source] = v
@@ -29,11 +38,11 @@ module Loomy
       def color(v)      = @layer.properties[:color] = v
       def font(v)       = @layer.properties[:font] = v
       def size(v)       = @layer.properties[:size] = v
-
+      
       def use(style_name)
         block = Loomy.styles[style_name]
         raise ArgumentError, "Style '#{style_name}' not defined" unless block
-
+        
         evaluate(&block)
       end
 

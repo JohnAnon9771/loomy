@@ -1,6 +1,3 @@
-require_relative "base"
-require_relative "../color"
-
 module Loomy
   module Ops
     class Solid < Base

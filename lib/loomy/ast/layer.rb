@@ -1,5 +1,3 @@
-require_relative 'node'
-
 module Loomy
   module AST
     class Layer < Node
@@ -26,6 +24,13 @@ module Loomy
       def fit        = properties[:fit]
       def gravity    = properties[:gravity] || :centre
       def trim       = properties[:trim]
+
+      # Semantic Layout Properties
+      def align      = properties[:align]
+      def valign     = properties[:valign]
+      def anchor     = properties[:anchor]
+      def offset_x   = properties[:offset_x] || 0
+      def offset_y   = properties[:offset_y] || 0
 
       def effects
         @effects ||= []

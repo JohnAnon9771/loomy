@@ -1,6 +1,3 @@
-require_relative "base"
-require "vips"
-
 module Loomy
   module Ops
     class Load < Base
