@@ -26,20 +26,20 @@ module Loomy
         instance_eval(&block) if block_given?
       end
 
-      def layer(source, **options, &block)
+      def layer(source = nil, **options, &block)
         add_layer(source, options, &block)
       end
 
       # Specialized layer aliases from the example
-      def template(source, **options, &block)
+      def template(source = nil, **options, &block)
         add_layer(source, options.merge(role: :template), &block)
       end
 
-      def mask(source, **options, &block)
+      def mask(source = nil, **options, &block)
         add_layer(source, options.merge(role: :mask), &block)
       end
 
-      def artwork(source, **options, &block)
+      def artwork(source = nil, **options, &block)
         add_layer(source, options.merge(role: :artwork), &block)
       end
 
@@ -60,9 +60,7 @@ module Loomy
         @canvas.add_child(node)
 
         # Evaluate block with LayerBuilder if provided
-        if block_given?
-          LayerBuilder.new(node).evaluate(&block)
-        end
+        LayerBuilder.new(node).evaluate(&block) if block_given?
       end
     end
   end

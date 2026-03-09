@@ -3,41 +3,29 @@ require_relative 'node'
 module Loomy
   module AST
     class Layer < Node
-      def source
-        properties[:source]
+      def source_type
+        return :file     if properties[:source]
+        return :solid    if properties[:solid]
+        return :text     if properties[:text]
+        return :gradient if properties[:gradient]
       end
 
-      def blend_mode
-        properties[:blend] || :over
-      end
+      def source   = properties[:source]
+      def solid    = properties[:solid]
+      def text     = properties[:text]
+      def gradient = properties[:gradient]
+      def color    = properties[:color]
+      def font     = properties[:font]
+      def size     = properties[:size]
 
-      def x
-        properties[:x] || 0
-      end
-
-      def y
-        properties[:y] || 0
-      end
-
-      def width
-        properties[:width]
-      end
-
-      def height
-        properties[:height]
-      end
-
-      def fit
-        properties[:fit]
-      end
-
-      def gravity
-        properties[:gravity] || :centre
-      end
-
-      def trim
-        properties[:trim]
-      end
+      def blend_mode = properties[:blend] || :over
+      def x          = properties[:x] || 0
+      def y          = properties[:y] || 0
+      def width      = properties[:width]
+      def height     = properties[:height]
+      def fit        = properties[:fit]
+      def gravity    = properties[:gravity] || :centre
+      def trim       = properties[:trim]
 
       def effects
         @effects ||= []

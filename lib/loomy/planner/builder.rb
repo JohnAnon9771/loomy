@@ -1,6 +1,9 @@
 require "loomy/ast/visitor"
 require "loomy/ops/base"
 require "loomy/ops/load"
+require "loomy/ops/solid"
+require "loomy/ops/text"
+require "loomy/ops/gradient"
 require "loomy/ops/trim"
 require "loomy/ops/resize"
 require "loomy/ops/effect_op"
@@ -43,14 +46,8 @@ module Loomy
       end
 
       def visit_group(node)
-        # 1. Create sub-pipeline for the group
-        # If group width/height are not set, it might be tricky for 'Pipeline' 
-        # which creates a black background.
-        # For now, we assume groups have a size or we use the parent size.
-        
-        parent_w = @width_stack.last
-        parent_h = @height_stack.last
-        
+        parent_w, parent_h = @width_stack.last, @height_stack.last
+
         @width_stack.push(node.width || parent_w)
         @height_stack.push(node.height || parent_h)
 
@@ -61,72 +58,90 @@ module Loomy
 
         node.children.each do |child|
           op_tree = visit(child)
-          if op_tree
-             pipeline.add_layer(
-               op_tree,
-               child.x || 0,
-               child.y || 0,
-               child.blend_mode || :over
-             )
-          end
+          pipeline.add_layer(
+            op_tree,
+            child.x || 0,
+            child.y || 0,
+            child.blend_mode || :over
+          ) if op_tree
         end
 
         @width_stack.pop
         @height_stack.pop
 
-        op = pipeline
-
-        # Apply group-level effects
-        node.effects.each do |effect|
-          op = Ops::EffectOp.new(input: op, effect_node: effect)
-        end
-
-        op
+        apply_effects(pipeline, node.effects)
       end
 
       def visit_layer(node)
-        # 1. Base Op: Load
-        # Apply "Smart Load" optimization eagerly
-        load_target_w = nil
-        load_target_h = nil
-        load_crop = nil
+        op = build_base_op(node)
+        op = Ops::Trim.new(input: op) if node.trim && node.source_type == :file
 
-        # If it's a simple resize (no trim before it), we can push to Load
-        if !node.trim && (node.width || node.height)
-          load_target_w = node.width
-          load_target_h = node.height
-          load_crop = (node.fit == :cover ? :centre : nil)
-        elsif node.trim && (node.width && node.width < 1000)
-          # Trim optimization: Load a safe thumbnail first
-          load_target_w = node.width * 2
-        end
-
-        op = Ops::Load.new(
-          node.source,
-          target_width: load_target_w,
-          target_height: load_target_h,
-          crop_mode: load_crop
-        )
-
-        # 2. Trim
-        op = Ops::Trim.new(input: op) if node.trim
-
-        # 3. Resize
         if node.width || node.height
-          op = Ops::Resize.new(
-            input: op,
-            width: node.width,
-            height: node.height,
-            fit: node.fit
-          )
+          op = Ops::Resize.new(input: op, width: node.width, height: node.height, fit: node.fit)
         end
 
-        # 4. Effects (Applied after resize for performance)
-        node.effects.each do |effect|
-          op = Ops::EffectOp.new(input: op, effect_node: effect)
+        apply_effects(op, node.effects)
+      end
+
+      private
+
+      def build_base_op(node)
+        case node.source_type
+        when :file     then build_load_op(node)
+        when :solid    then build_solid_op(node)
+        when :text     then build_text_op(node)
+        when :gradient then build_gradient_op(node)
+        end
+      end
+
+      def build_load_op(node)
+        target_w, target_h, crop = nil, nil, nil
+
+        if !node.trim && (node.width || node.height)
+          target_w, target_h = node.width, node.height
+          crop = :centre if node.fit == :cover
+        elsif node.trim && node.width && node.width < 1000
+          # Trim optimization: Load a safe thumbnail first
+          target_w = node.width * 2
         end
 
-        op
+        Ops::Load.new(
+          node.source,
+          target_width: target_w,
+          target_height: target_h,
+          crop_mode: crop
+        )
+      end
+
+      def build_solid_op(node)
+        Ops::Solid.new(
+          color: node.solid,
+          width: node.width || @width_stack.last || 1,
+          height: node.height || @height_stack.last || 1
+        )
+      end
+
+      def build_text_op(node)
+        Ops::Text.new(
+          text: node.text,
+          font: node.font || "sans",
+          size: node.size || 24,
+          color: node.color || "#000",
+          width: node.width
+        )
+      end
+
+      def build_gradient_op(node)
+        Ops::Gradient.new(
+          from: node.gradient[:from], to: node.gradient[:to],
+          direction: node.gradient[:direction] || :top_bottom,
+          width: node.width || @width_stack.last || 1,
+          height: node.height || @height_stack.last || 1
+        )
+      end
+
+      def apply_effects(op, effects)
+        effects.inject(op) { |current_op, effect| Ops::EffectOp.new(input: current_op, effect_node: effect) }
       end
     end
   end
