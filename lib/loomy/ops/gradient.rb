@@ -1,5 +1,5 @@
 require_relative "base"
-require_relative "solid"
+require_relative "../color"
 
 module Loomy
   module Ops
@@ -8,24 +8,19 @@ module Loomy
 
       def initialize(from:, to:, direction: :top_bottom, width: 1, height: 1)
         super(input: nil)
-        @from      = from
-        @to        = to
+        @from      = Color.new(from)
+        @to        = Color.new(to)
         @direction = direction
         @width     = width
         @height    = height
       end
 
       def call(_context = nil)
-        c_from = Solid.new(color: from).send(:rgba)
-        c_to   = Solid.new(color: to).send(:rgba)
-        
-        diff = c_to.zip(c_from).map { |t, f| t - f }
-        
-        base = Vips::Image.black(width, height, bands: 3).linear(1, c_from[0..2])
-        mask = render_mask
-        
+        diff  = @to.rgba.zip(@from.rgba).map { |t, f| t - f }
+        base  = Vips::Image.black(width, height, bands: 3).linear(1, @from.to_rgb)
+        mask  = render_mask
         res   = (base + mask.bandjoin([mask, mask]) * diff[0..2]).copy(interpretation: :srgb)
-        alpha = mask * (c_to[3] - c_from[3]) + c_from[3]
+        alpha = mask * diff[3] + @from.a
         
         res.bandjoin(alpha)
       end

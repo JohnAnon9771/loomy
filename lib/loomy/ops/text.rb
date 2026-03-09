@@ -15,14 +15,8 @@ module Loomy
       end
 
       def call(context = nil)
-        options = { font: "#{font} #{size}", width: width || 0 }
-        
-        mask = Vips::Image.text(text, **options)
-        
-        # Create solid color then apply text mask as alpha
-        solid_op = Solid.new(color: color, width: mask.width, height: mask.height)
-        rgba = solid_op.call(context)
-        
+        mask = Vips::Image.text(text, font: "#{font} #{size}", width: width || 0)
+        rgba = Solid.new(color: color, width: mask.width, height: mask.height).call(context)
         rgba.extract_band(0, n: 3).bandjoin(mask)
       end
     end
