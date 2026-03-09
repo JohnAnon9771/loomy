@@ -37,51 +37,37 @@ module Loomy
       end
 
       def visit_layer(node)
-        parent_w = @width_stack.last
-        parent_h = @height_stack.last
+        parent_w, parent_h = @width_stack.last, @height_stack.last
 
-        # Resolve Geometry - Only if they are not already fixed integers
-        # (Though they might be relative strings)
-        node.properties[:x] = resolve_dim(node.x, parent_w) if node.x.is_a?(String)
-        node.properties[:y] = resolve_dim(node.y, parent_h) if node.y.is_a?(String)
-        node.properties[:width] = resolve_dim(node.width, parent_w) if node.width.is_a?(String)
-        node.properties[:height] = resolve_dim(node.height, parent_h) if node.height.is_a?(String)
+        node.properties[:x] = resolve_dim(node.x, parent_w)
+        node.properties[:y] = resolve_dim(node.y, parent_h)
+        node.properties[:width] = resolve_dim(node.width, parent_w)
+        node.properties[:height] = resolve_dim(node.height, parent_h)
 
-        # Prune if width/height are 0
+        # Prune if fixed dimensions are 0
         return nil if node.width == 0 || node.height == 0
 
-        # Optimize effects
-        if node.effects.any?
-          node.effects.map! { |effect| visit(effect) }
-          node.effects.compact!
-        end
-
+        node.effects.map! { |e| visit(e) }.compact!
         node
       end
 
       def visit_group(node)
-        parent_w = @width_stack.last
-        parent_h = @height_stack.last
+        parent_w, parent_h = @width_stack.last, @height_stack.last
 
-        node.properties[:x] = resolve_dim(node.x, parent_w) if node.x.is_a?(String)
-        node.properties[:y] = resolve_dim(node.y, parent_h) if node.y.is_a?(String)
-        node.properties[:width] = resolve_dim(node.width, parent_w) if node.width.is_a?(String)
-        node.properties[:height] = resolve_dim(node.height, parent_h) if node.height.is_a?(String)
+        node.properties[:x] = resolve_dim(node.x, parent_w)
+        node.properties[:y] = resolve_dim(node.y, parent_h)
+        node.properties[:width] = resolve_dim(node.width, parent_w)
+        node.properties[:height] = resolve_dim(node.height, parent_h)
 
-        @width_stack.push(node.width || parent_w)
-        @height_stack.push(node.height || parent_h)
+        @width_stack.push(node.width.is_a?(Numeric) ? node.width : parent_w)
+        @height_stack.push(node.height.is_a?(Numeric) ? node.height : parent_h)
 
-        node.children.map! { |child| visit(child) }
-        node.children.compact!
+        node.children.map! { |child| visit(child) }.compact!
 
         @width_stack.pop
         @height_stack.pop
 
-        if node.effects.any?
-          node.effects.map! { |effect| visit(effect) }
-          node.effects.compact!
-        end
-
+        node.effects.map! { |e| visit(e) }.compact!
         node
       end
 

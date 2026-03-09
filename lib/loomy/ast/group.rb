@@ -3,25 +3,18 @@ require_relative 'node'
 module Loomy
   module AST
     class Group < Node
-      def x
-        properties[:x] || 0
-      end
+      def x      = properties[:x] || 0
+      def y      = properties[:y] || 0
+      def width  = properties[:width]
+      def height = properties[:height]
 
-      def y
-        properties[:y] || 0
-      end
+      def align      = properties[:align]
+      def valign     = properties[:valign]
+      def anchor     = properties[:anchor]
+      def offset_x   = properties[:offset_x] || 0
+      def offset_y   = properties[:offset_y] || 0
 
-      def width
-        properties[:width]
-      end
-
-      def height
-        properties[:height]
-      end
-
-      def blend_mode
-        properties[:blend] || :over
-      end
+      def blend_mode = properties[:blend] || :over
 
       def effects
         @effects ||= []
@@ -31,9 +24,7 @@ module Loomy
         effects << effect
       end
 
-      def accept(visitor)
-        visitor.visit_group(self)
-      end
+      def accept(visitor) = visitor.visit_group(self)
     end
   end
 end

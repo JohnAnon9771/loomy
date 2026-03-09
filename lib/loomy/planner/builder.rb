@@ -31,15 +31,7 @@ module Loomy
 
         node.children.each do |layer|
           op_tree = visit(layer)
-
-          if op_tree
-            pipeline.add_layer(
-              op_tree,
-              layer.x || 0,
-              layer.y || 0,
-              layer.blend_mode || :over
-            )
-          end
+          pipeline.add_layer(op_tree, layer_properties(layer)) if op_tree
         end
 
         pipeline
@@ -47,7 +39,7 @@ module Loomy
 
       def visit_group(node)
         parent_w, parent_h = @width_stack.last, @height_stack.last
-
+        
         @width_stack.push(node.width || parent_w)
         @height_stack.push(node.height || parent_h)
 
@@ -58,12 +50,7 @@ module Loomy
 
         node.children.each do |child|
           op_tree = visit(child)
-          pipeline.add_layer(
-            op_tree,
-            child.x || 0,
-            child.y || 0,
-            child.blend_mode || :over
-          ) if op_tree
+          pipeline.add_layer(op_tree, layer_properties(child)) if op_tree
         end
 
         @width_stack.pop
@@ -75,15 +62,36 @@ module Loomy
       def visit_layer(node)
         op = build_base_op(node)
         op = Ops::Trim.new(input: op) if node.trim && node.source_type == :file
-
-        if node.width || node.height
+        
+        # Only use Ops::Resize for fixed numeric target sizes.
+        # If any axis is semantic (like :fill), defer to Pipeline resolution.
+        if node.width.is_a?(Numeric) && node.height.is_a?(Numeric)
           op = Ops::Resize.new(input: op, width: node.width, height: node.height, fit: node.fit)
+        elsif node.width.is_a?(Numeric)
+          op = Ops::Resize.new(input: op, width: node.width, height: nil, fit: node.fit)
+        elsif node.height.is_a?(Numeric)
+          op = Ops::Resize.new(input: op, width: nil, height: node.height, fit: node.fit)
         end
 
         apply_effects(op, node.effects)
       end
 
       private
+
+      def layer_properties(layer)
+        {
+          x:        layer.x,
+          y:        layer.y,
+          blend:    layer.blend_mode,
+          align:    layer.align,
+          valign:   layer.valign,
+          anchor:   layer.anchor,
+          offset_x: layer.offset_x,
+          offset_y: layer.offset_y,
+          width:    layer.width,
+          height:   layer.height
+        }
+      end
 
       def build_base_op(node)
         case node.source_type
@@ -97,46 +105,34 @@ module Loomy
       def build_load_op(node)
         target_w, target_h, crop = nil, nil, nil
 
-        if !node.trim && (node.width || node.height)
+        if !node.trim && node.width.is_a?(Numeric)
           target_w, target_h = node.width, node.height
           crop = :centre if node.fit == :cover
-        elsif node.trim && node.width && node.width < 1000
-          # Trim optimization: Load a safe thumbnail first
+        elsif node.trim && node.width.is_a?(Numeric) && node.width < 1000
           target_w = node.width * 2
         end
 
-        Ops::Load.new(
-          node.source,
-          target_width: target_w,
-          target_height: target_h,
-          crop_mode: crop
-        )
+        Ops::Load.new(node.source, target_width: target_w, target_height: target_h, crop_mode: crop)
       end
 
       def build_solid_op(node)
-        Ops::Solid.new(
-          color: node.solid,
-          width: node.width || @width_stack.last || 1,
-          height: node.height || @height_stack.last || 1
-        )
+        w = node.width.is_a?(Numeric) ? node.width : (@width_stack.last || 1)
+        h = node.height.is_a?(Numeric) ? node.height : (@height_stack.last || 1)
+        Ops::Solid.new(color: node.solid, width: w, height: h)
       end
 
       def build_text_op(node)
-        Ops::Text.new(
-          text: node.text,
-          font: node.font || "sans",
-          size: node.size || 24,
-          color: node.color || "#000",
-          width: node.width
-        )
+        w = node.width.is_a?(Numeric) ? node.width : nil
+        Ops::Text.new(text: node.text, font: node.font || "sans", size: node.size || 24, color: node.color || "#000", width: w)
       end
 
       def build_gradient_op(node)
+        w = node.width.is_a?(Numeric) ? node.width : (@width_stack.last || 1)
+        h = node.height.is_a?(Numeric) ? node.height : (@height_stack.last || 1)
         Ops::Gradient.new(
-          from: node.gradient[:from], to: node.gradient[:to],
+          from: node.gradient[:from], to: node.gradient[:to], 
           direction: node.gradient[:direction] || :top_bottom,
-          width: node.width || @width_stack.last || 1,
-          height: node.height || @height_stack.last || 1
+          width: w, height: h
         )
       end
 
