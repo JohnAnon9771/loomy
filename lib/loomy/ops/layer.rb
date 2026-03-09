@@ -1,8 +1,7 @@
 module Loomy
   module Ops
-    class Pipeline < Base
-      class Layer
-        attr_reader :image, :props
+    class Layer
+      attr_reader :image, :props
 
         def initialize(op, props)
           @op    = op
@@ -76,14 +75,13 @@ module Loomy
 
           res_x = ax ? anchors[ax.to_sym].call(pw, img.width, @props[:offset_x].to_i) : @props[:offset_x].to_i
           res_y = ay ? anchors[ay.to_sym].call(ph, img.height, @props[:offset_y].to_i) : @props[:offset_y].to_i
-          
+
           [res_x, res_y]
         end
 
         def ensure_srgb(img)
           img.bands >= 3 && img.interpretation == :multiband ? img.copy(interpretation: :srgb) : img
         end
-      end
     end
   end
 end
