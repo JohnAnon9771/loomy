@@ -25,7 +25,7 @@ module Loomy
       def visit_group(node)
         pw, ph = @width_stack.last, @height_stack.last
 
-        @width_stack.push(node.width  || pw)
+        @width_stack.push(node.width || pw)
         @height_stack.push(node.height || ph)
 
         pipeline = Ops::Pipeline.new(
