@@ -10,7 +10,10 @@ module Loomy
         @layers = []
       end
 
-      def add_layer(op, properties = {}) = @layers << Layer.new(op, properties)
+      def add_layer(op, properties = {})
+        return unless op
+        @layers << Layer.new(op, properties)
+      end
 
       def call(context = nil)
         prepared = @layers.map { |l| l.prepare(context) }

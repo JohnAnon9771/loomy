@@ -5,13 +5,33 @@ require "loomy/ast/optimizer"
 class OptimizerTest < Minitest::Test
   def test_pruning
     canvas = Loomy::AST::Canvas.new(size: [100, 100])
-    layer = Loomy::AST::Layer.new(source: "foo.png", width: 0)
-    canvas.add_child(layer)
+    
+    # Layer 1: width 0
+    layer1 = Loomy::AST::Layer.new(source: "foo.png", width: 0)
+    
+    # Layer 2: No source
+    layer2 = Loomy::AST::Layer.new(font: "Arial")
+    
+    # Layer 3: Empty text
+    layer3 = Loomy::AST::Layer.new(text: "", size: 20)
+    
+    # Layer 4: Empty source file
+    layer4 = Loomy::AST::Layer.new(source: "")
+    
+    # Layer 5: Valid
+    layer5 = Loomy::AST::Layer.new(source: "bar.png")
+    
+    canvas.add_child(layer1)
+    canvas.add_child(layer2)
+    canvas.add_child(layer3)
+    canvas.add_child(layer4)
+    canvas.add_child(layer5)
     
     optimizer = Loomy::AST::Optimizer.new(canvas)
     optimizer.call
     
-    assert_empty canvas.children, "Layer with width 0 should be pruned"
+    assert_equal 1, canvas.children.size, "Only 1 valid layer should remain"
+    assert_equal "bar.png", canvas.children.first.source
   end
 
   def test_relative_geometry
