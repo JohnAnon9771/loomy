@@ -271,7 +271,7 @@ end
 <v-click at="5">
 <div class="mt-1 p-1.5 bg-yellow-500/10 rounded text-xs">
 
-👆 `accept(visitor)` — a chave do **Visitor Pattern** (já já!)
+👆 `accept(visitor)` — o nó mostra o "crachá" dizendo quem ele é, e o visitor sabe qual método chamar.
 
 </div>
 </v-click>
@@ -383,7 +383,25 @@ Temos uma árvore (AST). Precisamos fazer **coisas diferentes** com ela:
 <v-click>
 <div class="mt-3 p-2 bg-red-500/10 border border-red-500/30 rounded text-sm">
 
-❌ **Tentação:** colocar `optimize()`, `plan()`, `render()` dentro de cada nó. Resultado? Classes de dados poluídas com lógica que não é delas.
+❌ **Tentação 1:** colocar `optimize()`, `plan()`, `render()` dentro de cada nó. Resultado? Classes de dados poluídas com lógica que não é delas.
+
+</div>
+</v-click>
+
+<v-click>
+<div class="mt-2 p-2 bg-orange-500/10 border border-orange-500/30 rounded text-sm">
+
+❌ **Tentação 2:** um `case` gigante — e a cada novo nó, mais um `when`:
+
+```ruby
+def optimize(node)
+  case node
+  when Canvas then ...
+  when Layer then ...   # E se criar Stack? Mais um when.
+  when Group then ...   # E no Planner? Outro case igualzinho.
+  end
+end
+```
 
 </div>
 </v-click>
@@ -399,6 +417,12 @@ Temos uma árvore (AST). Precisamos fazer **coisas diferentes** com ela:
 ---
 
 # Visitor Pattern — Como Funciona
+
+<div class="text-sm mb-2">
+
+💡 A ideia: o Visitor pede pra visitar um nó. O nó responde **"eu sou um Layer!"** — e o Visitor já sabe qual método chamar. **Sem `if`, sem `case`.**
+
+</div>
 
 <div class="grid grid-cols-2 gap-4 mt-2">
 <div>
@@ -443,10 +467,42 @@ sequenceDiagram
 </div>
 </div>
 
-<v-click>
-<div class="mt-2 text-sm text-center opacity-70">
+---
 
-O nó **não sabe** o que o visitor vai fazer. O visitor **não precisa** de `if/case` para decidir o tipo.
+# Resumindo: O "Aperto de Mão" 🤝
+
+<div class="flex justify-center mt-6">
+<div class="flex items-center gap-4 text-center">
+
+<div v-click class="p-4 bg-blue-500/10 rounded-lg">
+  <div class="text-3xl mb-2">🚶</div>
+  <div class="font-bold text-blue-400">Visitor</div>
+  <div class="text-xs mt-1 opacity-80">"Posso te visitar?"</div>
+</div>
+
+<div v-click class="text-2xl">→</div>
+
+<div v-click class="p-4 bg-green-500/10 rounded-lg">
+  <div class="text-3xl mb-2">🏷️</div>
+  <div class="font-bold text-green-400">Node</div>
+  <div class="text-xs mt-1 opacity-80">"Claro! Eu sou um <strong>Layer</strong>."</div>
+</div>
+
+<div v-click class="text-2xl">→</div>
+
+<div v-click class="p-4 bg-purple-500/10 rounded-lg">
+  <div class="text-3xl mb-2">⚡</div>
+  <div class="font-bold text-purple-400">Visitor</div>
+  <div class="text-xs mt-1 opacity-80">"Pra Layer eu faço <strong>isso</strong>."</div>
+</div>
+
+</div>
+</div>
+
+<v-click>
+<div class="mt-6 text-center text-sm opacity-70">
+
+O nó **não sabe** o que o visitor vai fazer. O visitor **não precisa** de `if/case` para decidir o tipo. Cada um faz sua parte. 🎯
 
 </div>
 </v-click>
@@ -691,58 +747,6 @@ class: text-center
 
 ---
 
-# Live Demo
-
-<div class="grid grid-cols-2 gap-4 mt-2">
-<div>
-
-### 1. AST "Suja" (a comanda original)
-
-```ruby
-canvas = Canvas.new(size: [800, 600])
-grupo = Group.new(x: 10, y: 10)
-visivel = Layer.new(
-  source: "logo.png", width: 100)
-invisivel = Layer.new(
-  source: "error.png", width: 0)
-grupo.children << visivel
-grupo.children << invisivel
-canvas.children << grupo
-```
-
-</div>
-<div>
-
-### 2. Otimizador (o gerente revisa)
-
-```ruby
-optimizer = Optimizer.new(canvas)
-canvas_limpo = optimizer.call
-pp canvas_limpo
-# → Layer "error.png" sumiu! ✂️
-```
-
-<v-click>
-
-### 3. Render real com DSL
-
-```ruby
-Loomy.render("demo.png", size: [800, 600]) do
-  layer "background.jpg"
-  group x: 50, y: 50 do
-    layer "logo.png", width: 200
-  end
-end
-# → Imagem gerada! 🖼️
-```
-
-</v-click>
-
-</div>
-</div>
-
----
-
 # O que você leva pra casa 🎒
 
 <div class="mt-4 grid grid-cols-2 gap-4">
@@ -771,24 +775,6 @@ end
   <p class="text-sm mt-2 opacity-80">Babel, React, SQL, linters, bundlers... agora você reconhece.</p>
 </div>
 
-</div>
-
----
-
-# Loomy é Open Source 🧶
-
-<div class="flex flex-col items-center mt-12 gap-4">
-  <img src="/logo.png" class="w-24 rounded-lg" />
-
-  <div class="text-2xl font-bold">github.com/JohnAnon9771/loomy</div>
-
-  <div class="text-lg font-mono bg-slate-500/10 px-4 py-2 rounded">
-    gem install loomy
-  </div>
-
-  <div class="mt-4 text-sm opacity-70">
-    ⭐ Stars, Issues e PRs são muito bem-vindos!
-  </div>
 </div>
 
 ---
