@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="pt-BR">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Loomy AST Playground</title>
+        <link rel="stylesheet" href="/style.css" />
+        <link
+            rel="stylesheet"
+            href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.18/codemirror.min.css"
+        />
+        <link
+            rel="stylesheet"
+            href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.18/theme/dracula.min.css"
+        />
+    </head>
+    <body>
+        <header>
+            <div class="header-left">
+                <h1>Loomy AST Playground</h1>
+            </div>
+            <div class="header-controls">
+                <div class="size-inputs">
+                    <label>Size:</label>
+                    <input
+                        type="number"
+                        id="canvas-w"
+                        value="800"
+                        min="1"
+                        max="9999"
+                    />
+                    <span>×</span>
+                    <input
+                        type="number"
+                        id="canvas-h"
+                        value="600"
+                        min="1"
+                        max="9999"
+                    />
+                </div>
+                <button id="btn-parse" class="btn btn-primary">Parse</button>
+            </div>
+        </header>
+
+        <main>
+            <section class="panel editor-panel">
+                <div class="panel-header">
+                    <span>Código DSL</span>
+                </div>
+                <div id="editor-wrapper">
+                    <textarea id="editor">
+layer "background.jpg" do
+  blur radius: 3
+end
+
+layer "overlay.png" do
+  width "50%"
+  height "100%"
+  adjust_color brightness: 1.0, contrast: 1.0
+end
+
+vstack spacing: 20, x: 10, y: 10 do
+  hstack spacing: 10 do
+    layer solid: "#ff0000", width: 50, height: 50
+    layer solid: "#00ff00", width: 50, height: 50
+  end
+  layer solid: "#0000ff", width: 110, height: 50
+end
+
+group x: 40, y: 40 do
+  layer "avatar.png" do
+    width 120
+    height 120
+    blur radius: 0
+  end
+
+  layer "title.png" do
+    x 140
+    width "30%"
+  end
+
+  layer "badge.png", width: 0
+end
+
+group x: 0, y: "85%" do
+  layer "footer_bg.png" do
+    width "100%"
+    height 0
+  end
+  layer "copyright.png", width: "25%"
+end</textarea
+                    >
+                </div>
+            </section>
+
+            <section class="panel tree-panel">
+                <div class="panel-header">
+                    <span id="tree-title">AST</span>
+                    <div class="toggle-group">
+                        <button id="btn-pre" class="btn btn-toggle active">
+                            Antes
+                        </button>
+                        <button id="btn-post" class="btn btn-toggle">
+                            Depois
+                        </button>
+                        <button id="btn-diff" class="btn btn-toggle">
+                            Diff
+                        </button>
+                    </div>
+                </div>
+                <div id="tree-container">
+                    <div class="tree-placeholder">
+                        <p>
+                            Escreva código DSL e clique
+                            <strong>Parse</strong>
+                        </p>
+                        <p class="text-muted">
+                            ou pressione <kbd>Ctrl</kbd>+<kbd>Enter</kbd>
+                        </p>
+                    </div>
+                </div>
+                <div id="stats-bar" class="hidden">
+                    <span id="stats-text"></span>
+                </div>
+            </section>
+        </main>
+
+        <div id="error-toast" class="hidden"></div>
+
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.18/codemirror.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.18/mode/ruby/ruby.min.js"></script>
+        <script src="/app.js"></script>
+    </body>
+</html>

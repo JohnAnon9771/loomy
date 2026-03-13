@@ -1,2 +1,4 @@
 .DS_Store
 test/tmp/*
+
+slides/node_modules

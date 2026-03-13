@@ -1,0 +1,325 @@
+/* ── Base ─────────────────────────────────────────── */
+:root {
+  --bg: #0d1117;
+  --bg-panel: #161b22;
+  --bg-card: #1c2128;
+  --border: #30363d;
+  --text: #e6edf3;
+  --text-muted: #7d8590;
+  --blue: #58a6ff;
+  --green: #3fb950;
+  --purple: #bc8cff;
+  --yellow: #d29922;
+  --red: #f85149;
+  --cyan: #39d2c0;
+  --orange: #db6d28;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ── Header ──────────────────────────────────────── */
+header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 20px;
+  background: var(--bg-panel);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+header h1 {
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.header-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.size-inputs {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.85rem;
+}
+
+.size-inputs label { color: var(--text-muted); }
+
+.size-inputs input {
+  width: 60px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text);
+  padding: 4px 8px;
+  font-size: 0.85rem;
+  text-align: center;
+}
+
+.size-inputs span { color: var(--text-muted); }
+
+/* ── Buttons ─────────────────────────────────────── */
+.btn {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 14px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.15s;
+  background: var(--bg-card);
+  color: var(--text);
+}
+
+.btn:hover { border-color: var(--text-muted); }
+
+.btn-primary {
+  background: var(--green);
+  color: #000;
+  border-color: var(--green);
+  font-weight: 600;
+}
+
+.btn-primary:hover { opacity: 0.9; }
+
+.btn-toggle {
+  font-size: 0.8rem;
+  padding: 4px 10px;
+}
+
+.btn-toggle.active {
+  background: var(--blue);
+  color: #000;
+  border-color: var(--blue);
+  font-weight: 600;
+}
+
+/* ── Main Layout ─────────────────────────────────── */
+main {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+}
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.editor-panel {
+  width: 40%;
+  border-right: 1px solid var(--border);
+}
+
+.tree-panel {
+  width: 60%;
+  position: relative;
+}
+
+.panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 16px;
+  background: var(--bg-panel);
+  border-bottom: 1px solid var(--border);
+  font-size: 0.85rem;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.toggle-group {
+  display: flex;
+  gap: 4px;
+}
+
+/* ── Editor ──────────────────────────────────────── */
+#editor-wrapper {
+  flex: 1;
+  overflow: hidden;
+}
+
+.CodeMirror {
+  height: 100% !important;
+  font-size: 14px;
+  font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+}
+
+/* ── Tree Container ──────────────────────────────── */
+#tree-container {
+  flex: 1;
+  overflow: auto;
+  padding: 20px;
+}
+
+.tree-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--text-muted);
+  gap: 8px;
+}
+
+.tree-placeholder kbd {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 2px 6px;
+  font-size: 0.8rem;
+}
+
+/* ── Tree Nodes ──────────────────────────────────── */
+.tree-node {
+  margin-left: 20px;
+  position: relative;
+}
+
+.tree-node:before {
+  content: '';
+  position: absolute;
+  left: -14px;
+  top: 0;
+  height: 100%;
+  border-left: 1px solid var(--border);
+}
+
+.tree-node:last-child:before {
+  height: 16px;
+}
+
+.tree-node:before {
+  top: 0;
+}
+
+.tree-root {
+  margin-left: 0;
+}
+.tree-root:before { display: none; }
+
+.node-card {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  margin: 4px 0;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  font-size: 0.82rem;
+  position: relative;
+  transition: all 0.3s ease;
+  cursor: default;
+}
+
+.node-card:before {
+  content: '';
+  position: absolute;
+  left: -15px;
+  top: 50%;
+  width: 14px;
+  border-top: 1px solid var(--border);
+}
+
+.tree-root > .node-card:before { display: none; }
+
+.node-icon {
+  font-size: 1rem;
+  flex-shrink: 0;
+}
+
+.node-type {
+  font-weight: 700;
+  margin-right: 4px;
+}
+
+.node-props {
+  color: var(--text-muted);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.75rem;
+}
+
+/* Node type colors */
+.node-canvas .node-card { background: rgba(88, 166, 255, 0.1); border-color: var(--blue); }
+.node-canvas .node-type { color: var(--blue); }
+
+.node-layer .node-card { background: rgba(63, 185, 80, 0.1); border-color: var(--green); }
+.node-layer .node-type { color: var(--green); }
+
+.node-group .node-card { background: rgba(188, 140, 255, 0.1); border-color: var(--purple); }
+.node-group .node-type { color: var(--purple); }
+
+.node-stack .node-card { background: rgba(57, 210, 192, 0.1); border-color: var(--cyan); }
+.node-stack .node-type { color: var(--cyan); }
+
+.node-effect .node-card { background: rgba(210, 153, 34, 0.1); border-color: var(--yellow); }
+.node-effect .node-type { color: var(--yellow); }
+
+/* Removed node (diff mode) */
+.node-removed .node-card {
+  background: rgba(248, 81, 73, 0.1);
+  border-color: var(--red);
+  opacity: 0.5;
+  text-decoration: line-through;
+}
+.node-removed .node-type { color: var(--red); }
+
+/* ── Stats Bar ───────────────────────────────────── */
+#stats-bar {
+  padding: 6px 16px;
+  background: var(--bg-panel);
+  border-top: 1px solid var(--border);
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+/* ── Error Toast ─────────────────────────────────── */
+#error-toast {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--red);
+  color: #fff;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  max-width: 600px;
+  z-index: 100;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+  transition: opacity 0.3s;
+}
+
+/* ── Utilities ───────────────────────────────────── */
+.hidden { display: none !important; }
+.text-muted { color: var(--text-muted); }
+
+/* ── Animations ──────────────────────────────────── */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.tree-node {
+  animation: fadeIn 0.2s ease forwards;
+}
+
+.tree-node:nth-child(1) { animation-delay: 0.0s; }
+.tree-node:nth-child(2) { animation-delay: 0.05s; }
+.tree-node:nth-child(3) { animation-delay: 0.1s; }
+.tree-node:nth-child(4) { animation-delay: 0.15s; }
+.tree-node:nth-child(5) { animation-delay: 0.2s; }
