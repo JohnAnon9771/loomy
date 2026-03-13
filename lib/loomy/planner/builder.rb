@@ -43,6 +43,8 @@ module Loomy
 
       def visit_layer(node)
         op = build_base_op(node)
+        return nil unless op
+
         op = Ops::Trim.new(input: op) if node.trim && node.source_type == :file
 
         # We only apply Resize here for static numeric targets.
