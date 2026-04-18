@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 module Loomy
+  Bounds = Data.define(:x, :y, :width, :height)
+
   module DSL
     class PipelineBuilder
       def initialize(options, &block)
@@ -63,6 +65,12 @@ module Loomy
 
       def vstack(**options, &block) = stack(:vertical, **options, &block)
       def hstack(**options, &block) = stack(:horizontal, **options, &block)
+
+      def bounds_of(source)
+        img = Vips::Image.new_from_file(source)
+        left, top, w, h = img.find_trim(threshold: 10)
+        Bounds.new(x: left, y: top, width: w, height: h)
+      end
 
       private
 

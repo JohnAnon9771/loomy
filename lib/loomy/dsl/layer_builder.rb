@@ -59,6 +59,12 @@ module Loomy
       def grayscale                         = @layer.add_effect(AST::Effects::Grayscale.new)
       def adjust_color(**opts)              = @layer.add_effect(AST::Effects::ColorAdjustment.new(**opts))
 
+      def bounds_of(source)
+        img = Vips::Image.new_from_file(source)
+        left, top, w, h = img.find_trim(threshold: 10)
+        Bounds.new(x: left, y: top, width: w, height: h)
+      end
+
       # Nested structure support
       def layer(source = nil, **options, &block)
         node = AST::Layer.new(source: source, **options)
