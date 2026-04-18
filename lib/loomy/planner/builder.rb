@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module Loomy
   module Planner
     class Builder < AST::Visitor
@@ -23,13 +25,14 @@ module Loomy
       end
 
       def visit_group(node)
-        pw, ph = @width_stack.last, @height_stack.last
+        pw = @width_stack.last
+        ph = @height_stack.last
 
         @width_stack.push(node.width || pw)
         @height_stack.push(node.height || ph)
 
         pipeline = Ops::Pipeline.new(
-          background_width:  node.width  || pw,
+          background_width: node.width || pw,
           background_height: node.height || ph
         )
 
@@ -51,14 +54,21 @@ module Loomy
         # Dynamic axes (nil, :fill, strings) are deferred to Pipeline.
         if node.width.is_a?(Numeric) || node.height.is_a?(Numeric)
           op = Ops::Resize.new(
-            input:  op,
-            width:  node.width.is_a?(Numeric)  ? node.width  : nil,
+            input: op,
+            width: node.width.is_a?(Numeric) ? node.width : nil,
             height: node.height.is_a?(Numeric) ? node.height : nil,
-            fit:    node.fit
+            fit: node.fit
           )
         end
 
-        apply_effects(op, node.effects)
+        op = apply_effects(op, node.effects)
+
+        if node.properties[:mask]
+          mask_op = Ops::Load.new(node.properties[:mask])
+          op = Ops::Mask.new(input: op, mask_op: mask_op)
+        end
+
+        op
       end
 
       private
@@ -73,11 +83,13 @@ module Loomy
       end
 
       def build_load_op(node)
-        w, h = node.width, node.height
+        w = node.width
+        h = node.height
 
         # Optimization: push fixed numeric sizes into Load
         if !node.trim && w.is_a?(Numeric)
-          target_w, target_h = w, h
+          target_w = w
+          target_h = h
           crop = :centre if node.fit == :cover
         elsif node.trim && w.is_a?(Numeric) && w < 1000
           target_w = w * 2
@@ -94,7 +106,8 @@ module Loomy
 
       def build_text_op(node)
         w = node.width.is_a?(Numeric) ? node.width : nil
-        Ops::Text.new(text: node.text, font: node.font || "sans", size: node.size || 24, color: node.color || "#000", width: w)
+        Ops::Text.new(text: node.text, font: node.font || 'sans', size: node.size || 24, color: node.color || '#000',
+                      width: w)
       end
 
       def build_gradient_op(node)

@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module Loomy
   class Color
     def initialize(value)
@@ -25,7 +27,7 @@ module Loomy
     def from_array(array) = array.length == 3 ? array + [255] : array
 
     def hex_to_rgba(hex)
-      hex = hex.delete("#")
+      hex = hex.delete('#')
       parts =
         case hex.length
         when 3 then hex.chars.map { |c| c * 2 }

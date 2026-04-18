@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module Loomy
   module AST
     class Layer < Node
@@ -5,7 +7,8 @@ module Loomy
         return :file     if properties[:source]
         return :solid    if properties[:solid]
         return :text     if properties[:text]
-        return :gradient if properties[:gradient]
+
+        :gradient if properties[:gradient]
       end
 
       def source   = properties[:source]
@@ -31,6 +34,9 @@ module Loomy
       def anchor     = properties[:anchor]
       def offset_x   = properties[:offset_x] || 0
       def offset_y   = properties[:offset_y] || 0
+
+      def mask_source = properties[:mask]
+      def mask? = !properties[:mask].nil?
 
       def effects
         @effects ||= []

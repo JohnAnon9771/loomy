@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module Loomy
   module AST
     module Effects
@@ -5,7 +7,7 @@ module Loomy
         def brightness
           properties[:brightness] || 1.0
         end
-        
+
         def contrast
           properties[:contrast] || 1.0
         end

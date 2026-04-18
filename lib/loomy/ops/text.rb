@@ -1,9 +1,11 @@
+# frozen_string_literal: true
+
 module Loomy
   module Ops
     class Text < Base
       attr_reader :text, :font, :size, :color, :width
 
-      def initialize(text:, font: "sans", size: 12, color: "#000", width: nil)
+      def initialize(text:, font: 'sans', size: 12, color: '#000', width: nil)
         super(input: nil)
         @text  = text
         @font  = font

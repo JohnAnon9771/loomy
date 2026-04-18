@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module Loomy
   module AST
     class Optimizer < Visitor
@@ -35,7 +37,8 @@ module Loomy
       end
 
       def visit_layer(node)
-        parent_w, parent_h = @width_stack.last, @height_stack.last
+        parent_w = @width_stack.last
+        parent_h = @height_stack.last
 
         # Prune if no source is defined or if it is empty/invalid
         return nil if should_prune?(node)
@@ -46,14 +49,16 @@ module Loomy
         node.properties[:height] = resolve_dim(node.height, parent_h)
 
         # Prune if fixed dimensions are 0
-        return nil if node.width == 0 || node.height == 0
+        return nil if (node.width.is_a?(Numeric) && node.width.zero?) ||
+                     (node.height.is_a?(Numeric) && node.height.zero?)
 
         node.effects.map! { |e| visit(e) }.compact!
         node
       end
 
       def visit_group(node)
-        parent_w, parent_h = @width_stack.last, @height_stack.last
+        parent_w = @width_stack.last
+        parent_h = @height_stack.last
 
         node.properties[:x] = resolve_dim(node.x, parent_w)
         node.properties[:y] = resolve_dim(node.y, parent_h)
@@ -86,6 +91,18 @@ module Loomy
         node.strength <= 0 ? nil : node
       end
 
+      def visit_mask_displacement_effect(node)
+        return nil if node.intensity <= 0 || node.mask_path.nil?
+
+        node
+      end
+
+      def visit_mask_lighting_effect(node)
+        return nil if node.strength <= 0 || node.mask_path.nil?
+
+        node
+      end
+
       def visit_effect(node)
         node
       end
@@ -102,7 +119,7 @@ module Loomy
       end
 
       def resolve_dim(value, total)
-        return value unless value.is_a?(String) && value.end_with?("%")
+        return value unless value.is_a?(String) && value.end_with?('%')
         return value if total.nil?
 
         (total * (value.to_f / 100.0)).round

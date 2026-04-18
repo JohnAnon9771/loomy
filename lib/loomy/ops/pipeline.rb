@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module Loomy
   module Ops
     class Pipeline < Base
@@ -12,13 +14,14 @@ module Loomy
 
       def add_layer(op, properties = {})
         return unless op
+
         @layers << Layer.new(op, properties)
       end
 
       def call(context = nil)
         prepared = @layers.map { |l| l.prepare(context) }
         w, h     = canvas_size(prepared)
-        
+
         return transparent_background(w, h) if prepared.empty?
 
         images, modes, xs, ys = prepared.map { |l| l.resolve(w, h) }.transpose

@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module Loomy
   module Ops
     class Pipeline < Base
@@ -65,18 +67,19 @@ module Loomy
 
         def resolve_anchor(img, pw, ph)
           anchors = {
-            right:  ->(total, iw, off) { total - iw - off },
+            right: ->(total, iw, off) { total - iw - off },
             center: ->(total, iw, off) { (total - iw) / 2 + off },
             bottom: ->(total, ih, off) { total - ih - off },
             middle: ->(total, ih, off) { (total - ih) / 2 + off }
           }
 
           str = @props[:anchor].to_s
-          ax, ay = str[/right|center/], str[/bottom|middle/]
+          ax = str[/right|center/]
+          ay = str[/bottom|middle/]
 
           res_x = ax ? anchors[ax.to_sym].call(pw, img.width, @props[:offset_x].to_i) : @props[:offset_x].to_i
           res_y = ay ? anchors[ay.to_sym].call(ph, img.height, @props[:offset_y].to_i) : @props[:offset_y].to_i
-          
+
           [res_x, res_y]
         end
 
