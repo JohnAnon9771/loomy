@@ -22,6 +22,10 @@ module Loomy
         visit_node(node)
       end
 
+      def visit_stack(node)
+        visit_node(node)
+      end
+
       def visit_effect(node)
         # Effects usually don't have children, but if they did:
         visit_node(node)

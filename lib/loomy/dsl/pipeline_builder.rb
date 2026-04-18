@@ -53,6 +53,19 @@ module Loomy
         node
       end
 
+      def stack(direction, **options, &block)
+        node = AST::Stack.new(options.merge(direction: direction))
+        @canvas.add_child(node)
+
+        if block_given?
+          LayerBuilder.new(node).evaluate(&block)
+        end
+        node
+      end
+
+      def vstack(**options, &block) = stack(:vertical, **options, &block)
+      def hstack(**options, &block) = stack(:horizontal, **options, &block)
+
       private
 
       def add_layer(source, options, &block)

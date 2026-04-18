@@ -41,6 +41,29 @@ module Loomy
         apply_effects(pipeline, node.effects)
       end
 
+      def visit_stack(node)
+        pw, ph = @width_stack.last, @height_stack.last
+
+        @width_stack.push(node.width || pw)
+        @height_stack.push(node.height || ph)
+
+        stack = Ops::Stack.new(
+          direction: node.direction,
+          spacing:   node.spacing,
+          align:     node.align,
+          valign:    node.valign,
+          background_width:  node.width  || pw,
+          background_height: node.height || ph
+        )
+
+        node.children.each { |c| stack.add_layer(visit(c), c.properties) if c }
+
+        @width_stack.pop
+        @height_stack.pop
+
+        apply_effects(stack, node.effects)
+      end
+
       def visit_layer(node)
         op = build_base_op(node)
         return nil unless op

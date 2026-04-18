@@ -67,6 +67,16 @@ module Loomy
         LayerBuilder.new(node).evaluate(&block) if block_given?
         node
       end
+
+      def stack(direction, **options, &block)
+        node = AST::Stack.new(options.merge(direction: direction))
+        @layer.add_child(node)
+        LayerBuilder.new(node).evaluate(&block) if block_given?
+        node
+      end
+
+      def vstack(**options, &block) = stack(:vertical, **options, &block)
+      def hstack(**options, &block) = stack(:horizontal, **options, &block)
     end
   end
 end

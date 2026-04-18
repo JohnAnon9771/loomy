@@ -72,6 +72,27 @@ module Loomy
         node
       end
 
+      def visit_stack(node)
+        parent_w, parent_h = @width_stack.last, @height_stack.last
+
+        node.properties[:x] = resolve_dim(node.x, parent_w)
+        node.properties[:y] = resolve_dim(node.y, parent_h)
+        node.properties[:width] = resolve_dim(node.width, parent_w)
+        node.properties[:height] = resolve_dim(node.height, parent_h)
+        node.properties[:spacing] = resolve_dim(node.spacing, node.direction == :vertical ? parent_h : parent_w)
+
+        @width_stack.push(node.width.is_a?(Numeric) ? node.width : parent_w)
+        @height_stack.push(node.height.is_a?(Numeric) ? node.height : parent_h)
+
+        node.children.map! { |child| visit(child) }.compact!
+
+        @width_stack.pop
+        @height_stack.pop
+
+        node.effects.map! { |e| visit(e) }.compact!
+        node
+      end
+
       # No-op optimizations for effects
 
       def visit_blur_effect(node)
