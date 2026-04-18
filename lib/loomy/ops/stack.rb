@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module Loomy
   module Ops
     class Stack < Base
@@ -5,7 +7,10 @@ module Loomy
 
       def initialize(direction:, spacing: 0, align: nil, valign: nil, **options)
         super(input: nil)
-        @direction, @spacing, @align, @valign = direction, spacing, align, valign
+        @direction = direction
+        @spacing = spacing
+        @align = align
+        @valign = valign
         @compositor = Compositor.new(**options)
       end
 
@@ -26,12 +31,12 @@ module Loomy
 
         layers.each do |layer|
           if vertical?
-            layer.props[:y]     = offset
+            layer.props[:y] = offset
             layer.props[:align] ||= align
 
             offset += layer.image.height + spacing
           else
-            layer.props[:x]      = offset
+            layer.props[:x] = offset
             layer.props[:valign] ||= valign
 
             offset += layer.image.width + spacing

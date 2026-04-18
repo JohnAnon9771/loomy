@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module Loomy
   module AST
     module Effects
@@ -5,7 +7,7 @@ module Loomy
         def type
           properties[:type] || :ambient
         end
-        
+
         def strength
           properties[:strength] || 1.0
         end

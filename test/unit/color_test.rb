@@ -1,23 +1,25 @@
+# frozen_string_literal: true
+
 require_relative '../test_helper'
 
 class ColorTest < Minitest::Test
   def test_hex_3_chars
-    color = Loomy::Color.new("#f00")
+    color = Loomy::Color.new('#f00')
     assert_equal [255, 0, 0, 255], color.rgba
   end
 
   def test_hex_6_chars
-    color = Loomy::Color.new("#00ff00")
+    color = Loomy::Color.new('#00ff00')
     assert_equal [0, 255, 0, 255], color.rgba
   end
 
   def test_hex_8_chars
-    color = Loomy::Color.new("#0000ff80") # 128 in hex is 80
+    color = Loomy::Color.new('#0000ff80') # 128 in hex is 80
     assert_equal [0, 0, 255, 128], color.rgba
   end
 
   def test_hex_without_hash
-    color = Loomy::Color.new("ff00ff")
+    color = Loomy::Color.new('ff00ff')
     assert_equal [255, 0, 255, 255], color.rgba
   end
 
@@ -33,12 +35,12 @@ class ColorTest < Minitest::Test
 
   def test_invalid_input_defaults_to_black
     assert_equal [0, 0, 0, 255], Loomy::Color.new(nil).rgba
-    assert_equal [0, 0, 0, 255], Loomy::Color.new("invalid").rgba
-    assert_equal [0, 0, 0, 255], Loomy::Color.new("#abcd").rgba # Invalid length
+    assert_equal [0, 0, 0, 255], Loomy::Color.new('invalid').rgba
+    assert_equal [0, 0, 0, 255], Loomy::Color.new('#abcd').rgba # Invalid length
   end
 
   def test_accessors
-    color = Loomy::Color.new("#aabbccdd")
+    color = Loomy::Color.new('#aabbccdd')
     assert_equal 0xaa, color.r
     assert_equal 0xbb, color.g
     assert_equal 0xcc, color.b
@@ -46,7 +48,7 @@ class ColorTest < Minitest::Test
   end
 
   def test_to_rgb
-    color = Loomy::Color.new("#ff00ff80")
+    color = Loomy::Color.new('#ff00ff80')
     assert_equal [255, 0, 255], color.to_rgb
   end
 end

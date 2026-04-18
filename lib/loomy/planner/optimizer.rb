@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module Loomy
   module Planner
     class Optimizer
@@ -21,9 +23,7 @@ module Loomy
 
         optimized_input = op.input ? optimize_tree(op.input) : nil
 
-        if op.is_a?(Ops::Resize) && op.input.is_a?(Ops::Load)
-          return optimize_resize_into_load(op, optimized_input)
-        end
+        return optimize_resize_into_load(op, optimized_input) if op.is_a?(Ops::Resize) && op.input.is_a?(Ops::Load)
 
         if op.is_a?(Ops::Resize) && op.input.is_a?(Ops::Trim) && op.input.input.is_a?(Ops::Load)
           return optimize_trim_resize(op, optimized_input)

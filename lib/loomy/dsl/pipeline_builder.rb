@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module Loomy
   module DSL
     class PipelineBuilder
@@ -47,9 +49,7 @@ module Loomy
         node = AST::Group.new(options)
         @canvas.add_child(node)
 
-        if block_given?
-          LayerBuilder.new(node).evaluate(&block)
-        end
+        LayerBuilder.new(node).evaluate(&block) if block_given?
         node
       end
 
@@ -57,9 +57,7 @@ module Loomy
         node = AST::Stack.new(options.merge(direction: direction))
         @canvas.add_child(node)
 
-        if block_given?
-          LayerBuilder.new(node).evaluate(&block)
-        end
+        LayerBuilder.new(node).evaluate(&block) if block_given?
         node
       end
 
