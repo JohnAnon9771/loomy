@@ -28,13 +28,13 @@ module Loomy
         pw = @width_stack.last
         ph = @height_stack.last
 
-        @width_stack.push(node.width || pw)
-        @height_stack.push(node.height || ph)
+        w = resolve_width(node.width, pw)
+        h = resolve_height(node.height, ph)
 
-        pipeline = Ops::Pipeline.new(
-          background_width: node.width || pw,
-          background_height: node.height || ph
-        )
+        @width_stack.push(w)
+        @height_stack.push(h)
+
+        pipeline = Ops::Pipeline.new(background_width: w, background_height: h)
 
         node.children.each { |c| pipeline.add_layer(visit(c), c.properties) if c }
 
@@ -50,13 +50,17 @@ module Loomy
 
         op = Ops::Trim.new(input: op) if node.trim && node.source_type == :file
 
-        # We only apply Resize here for static numeric targets.
-        # Dynamic axes (nil, :fill, strings) are deferred to Pipeline.
-        if node.width.is_a?(Numeric) || node.height.is_a?(Numeric)
+        pw = @width_stack.last
+        ph = @height_stack.last
+
+        w = resolve_width(node.width, pw)
+        h = resolve_height(node.height, ph)
+
+        if w.is_a?(Numeric) || h.is_a?(Numeric)
           op = Ops::Resize.new(
             input: op,
-            width: node.width.is_a?(Numeric) ? node.width : nil,
-            height: node.height.is_a?(Numeric) ? node.height : nil,
+            width: w.is_a?(Numeric) ? w : nil,
+            height: h.is_a?(Numeric) ? h : nil,
             fit: node.fit
           )
         end
@@ -73,6 +77,18 @@ module Loomy
 
       private
 
+      def resolve_width(value, parent)
+        return parent if value.nil? || value == :fill
+        return value unless value.is_a?(String) && value.end_with?('%')
+
+        return value if parent.nil?
+        (parent * (value.to_f / 100.0)).round
+      end
+
+      def resolve_height(value, parent)
+        resolve_width(value, parent)
+      end
+
       def build_base_op(node)
         case node.source_type
         when :file     then build_load_op(node)
@@ -83,36 +99,40 @@ module Loomy
       end
 
       def build_load_op(node)
-        w = node.width
-        h = node.height
+        w = @width_stack.last
+        h = @height_stack.last
 
-        # Optimization: push fixed numeric sizes into Load
-        if !node.trim && w.is_a?(Numeric)
-          target_w = w
-          target_h = h
-          crop = :centre if node.fit == :cover
-        elsif node.trim && w.is_a?(Numeric) && w < 1000
-          target_w = w * 2
+        target_w = resolve_width(node.width, w)
+        target_h = resolve_height(node.height, h)
+
+        crop = :centre if node.fit == :cover && target_w.is_a?(Numeric) && target_h.is_a?(Numeric)
+
+        if node.trim && target_w.is_a?(Numeric) && target_w < 1000
+          target_w *= 2
         end
 
         Ops::Load.new(node.source, target_width: target_w, target_height: target_h, crop_mode: crop)
       end
 
       def build_solid_op(node)
-        w = node.width.is_a?(Numeric)  ? node.width  : (@width_stack.last || 1)
-        h = node.height.is_a?(Numeric) ? node.height : (@height_stack.last || 1)
+        w = resolve_width(node.width, @width_stack.last || 1)
+        h = resolve_height(node.height, @height_stack.last || 1)
+        w = w.is_a?(Numeric) ? w : 1
+        h = h.is_a?(Numeric) ? h : 1
         Ops::Solid.new(color: node.solid, width: w, height: h)
       end
 
       def build_text_op(node)
-        w = node.width.is_a?(Numeric) ? node.width : nil
+        w = resolve_width(node.width, @width_stack.last)
         Ops::Text.new(text: node.text, font: node.font || 'sans', size: node.size || 24, color: node.color || '#000',
-                      width: w)
+                      width: w.is_a?(Numeric) ? w : nil)
       end
 
       def build_gradient_op(node)
-        w = node.width.is_a?(Numeric)  ? node.width  : (@width_stack.last || 1)
-        h = node.height.is_a?(Numeric) ? node.height : (@height_stack.last || 1)
+        w = resolve_width(node.width, @width_stack.last || 1)
+        h = resolve_height(node.height, @height_stack.last || 1)
+        w = w.is_a?(Numeric) ? w : 1
+        h = h.is_a?(Numeric) ? h : 1
 
         Ops::Gradient.new(
           from: node.gradient[:from], to: node.gradient[:to],

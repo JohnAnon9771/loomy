@@ -5,8 +5,6 @@ module Loomy
     class Optimizer < Visitor
       def initialize(canvas)
         @canvas = canvas
-        @width_stack = []
-        @height_stack = []
       end
 
       def call
@@ -15,69 +13,23 @@ module Loomy
       end
 
       def visit_canvas(node)
-        @width_stack.push(node.width)
-        @height_stack.push(node.height)
-
-        # Optimize children
-        # We use map! to allow replacing nodes (though prune is different)
-        # Standard visit iterates. Here we need to mutate the list.
-
-        node.children.map! do |child|
-          res = visit(child)
-          # If visit returns :prune (or nil), we should handle it.
-          # But map! replaces. So let's return the node if ok, nil if prune.
-          res
-        end
-        node.children.compact!
-
-        @width_stack.pop
-        @height_stack.pop
-
+        node.children.map! { |child| visit(child) }.compact!
         node
       end
 
       def visit_layer(node)
-        parent_w = @width_stack.last
-        parent_h = @height_stack.last
-
-        # Prune if no source is defined or if it is empty/invalid
         return nil if should_prune?(node)
-
-        node.properties[:x] = resolve_dim(node.x, parent_w)
-        node.properties[:y] = resolve_dim(node.y, parent_h)
-        node.properties[:width] = resolve_dim(node.width, parent_w)
-        node.properties[:height] = resolve_dim(node.height, parent_h)
-
-        # Prune if fixed dimensions are 0
-        return nil if (node.width.is_a?(Numeric) && node.width.zero?) ||
-                      (node.height.is_a?(Numeric) && node.height.zero?)
+        return nil if invalid_dimensions?(node)
 
         node.effects.map! { |e| visit(e) }.compact!
         node
       end
 
       def visit_group(node)
-        parent_w = @width_stack.last
-        parent_h = @height_stack.last
-
-        node.properties[:x] = resolve_dim(node.x, parent_w)
-        node.properties[:y] = resolve_dim(node.y, parent_h)
-        node.properties[:width] = resolve_dim(node.width, parent_w)
-        node.properties[:height] = resolve_dim(node.height, parent_h)
-
-        @width_stack.push(node.width.is_a?(Numeric) ? node.width : parent_w)
-        @height_stack.push(node.height.is_a?(Numeric) ? node.height : parent_h)
-
         node.children.map! { |child| visit(child) }.compact!
-
-        @width_stack.pop
-        @height_stack.pop
-
         node.effects.map! { |e| visit(e) }.compact!
         node
       end
-
-      # No-op optimizations for effects
 
       def visit_blur_effect(node)
         node.radius <= 0 ? nil : node
@@ -89,9 +41,9 @@ module Loomy
 
       def visit_displacement_effect(node)
         return nil if node.scale <= 0
+        return nil if node.intensity <= 0
         return nil if node.from_mask? && node.from_mask.nil?
         return nil if !node.from_mask? && node.map_path.nil?
-
         node
       end
 
@@ -99,7 +51,6 @@ module Loomy
         return nil if node.strength <= 0
         return nil if node.from_mask? && node.from_mask.nil?
         return nil if !node.from_mask? && node.map_path.nil?
-
         node
       end
 
@@ -118,11 +69,9 @@ module Loomy
         end
       end
 
-      def resolve_dim(value, total)
-        return value unless value.is_a?(String) && value.end_with?('%')
-        return value if total.nil?
-
-        (total * (value.to_f / 100.0)).round
+      def invalid_dimensions?(node)
+        (node.width.is_a?(Numeric) && node.width.zero?) ||
+        (node.height.is_a?(Numeric) && node.height.zero?)
       end
     end
   end
