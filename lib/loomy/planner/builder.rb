@@ -70,13 +70,16 @@ module Loomy
 
         op = Ops::Trim.new(input: op) if node.trim && node.source_type == :file
 
-        # We only apply Resize here for static numeric targets.
-        # Dynamic axes (nil, :fill, strings) are deferred to Pipeline.
-        if node.width.is_a?(Numeric) || node.height.is_a?(Numeric)
+        w = resolve_dim(node.width, @width_stack.last)
+        h = resolve_dim(node.height, @height_stack.last)
+
+        return nil if (w.is_a?(Numeric) && w <= 0) || (h.is_a?(Numeric) && h <= 0)
+
+        if w.is_a?(Numeric) || h.is_a?(Numeric)
           op = Ops::Resize.new(
             input:  op,
-            width:  node.width.is_a?(Numeric)  ? node.width  : nil,
-            height: node.height.is_a?(Numeric) ? node.height : nil,
+            width:  w.is_a?(Numeric) ? w : nil,
+            height: h.is_a?(Numeric) ? h : nil,
             fit:    node.fit
           )
         end
@@ -96,9 +99,9 @@ module Loomy
       end
 
       def build_load_op(node)
-        w, h = node.width, node.height
+        w = resolve_dim(node.width, @width_stack.last)
+        h = resolve_dim(node.height, @height_stack.last)
 
-        # Optimization: push fixed numeric sizes into Load
         if !node.trim && w.is_a?(Numeric)
           target_w, target_h = w, h
           crop = :centre if node.fit == :cover
@@ -133,6 +136,13 @@ module Loomy
 
       def apply_effects(op, effects)
         effects.inject(op) { |o, e| Ops::EffectOp.new(input: o, effect_node: e) }
+      end
+
+      def resolve_dim(value, total)
+        return value unless value.is_a?(String) && value.end_with?("%")
+        return value if total.nil?
+
+        (total * (value.to_f / 100.0)).round
       end
     end
   end
