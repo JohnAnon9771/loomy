@@ -2,6 +2,7 @@ module Loomy
   module Ops
     class Layer
       attr_reader :image, :props
+      attr_accessor :op
 
         def initialize(op, props)
           @op    = op

@@ -6,6 +6,10 @@ module Loomy
         @compositor = Compositor.new(background_width: background_width, background_height: background_height)
       end
 
+      def layers
+        @compositor.layers
+      end
+
       def add_layer(op, properties = {})
         return unless op
         @compositor.add_layer(op, properties)

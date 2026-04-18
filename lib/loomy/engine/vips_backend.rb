@@ -6,10 +6,10 @@ module Loomy
       end
 
       def call
-        optimized_plan = Planner::Builder.new.build(@canvas)
-
+        plan = Planner::Builder.new.build(@canvas)
+        plan = Planner::Optimizer.new.optimize(plan)
         context = { source_cache: {} }
-        optimized_plan.call(context)
+        plan.call(context)
       end
     end
   end
