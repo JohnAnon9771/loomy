@@ -1,10 +1,14 @@
+# frozen_string_literal: true
+
 module Loomy
   module AST
     class Stack < Node
       def direction = properties[:direction]
       def spacing   = properties[:spacing] || 0
-      def align     = properties[:align]   # Cross-axis alignment
-      def valign    = properties[:valign]  # Main-axis alignment/distribution
+      # Cross-axis alignment
+      def align     = properties[:align]
+      # Main-axis alignment/distribution
+      def valign    = properties[:valign]
 
       def x      = properties[:x] || 0
       def y      = properties[:y] || 0

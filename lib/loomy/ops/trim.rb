@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module Loomy
   module Ops
     class Trim < Base
@@ -10,11 +12,11 @@ module Loomy
 
       def call(context = nil)
         img = @input.call(context)
-        
+
         # Trim requires a pixel scan. It is eager.
         left, top, w, h = img.find_trim(threshold: @threshold)
-        
-        if w > 0 && h > 0
+
+        if w.positive? && h.positive?
           img.crop(left, top, w, h)
         else
           img

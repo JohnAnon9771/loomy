@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module Loomy
   module Ops
     class Load < Base
@@ -29,16 +31,17 @@ module Loomy
         # it is often faster to resize the in-memory image (especially for PNGs)
         # than to open the file again, even with Vips::Image.thumbnail.
 
-        img = nil
+        nil
         raw_key = @path
 
-        if cache && (@target_width || @target_height) && (raw_img = cache[raw_key])
-           # We have the raw image, generate thumbnail from it
-           img = generate_thumbnail_from_image(raw_img)
-        else
-           # Load from disk
-           img = load_image
-        end
+        img =
+          if cache && (@target_width || @target_height) && (raw_img = cache[raw_key])
+            # We have the raw image, generate thumbnail from it
+            generate_thumbnail_from_image(raw_img)
+          else
+            # Load from disk
+            load_image
+          end
 
         if cache
           cache[cache_key] = img
@@ -56,7 +59,7 @@ module Loomy
         if @crop_mode == :centre
           img.thumbnail_image(@target_width, height: @target_height, size: :both, crop: :centre)
         else
-          img.thumbnail_image(@target_width || 10000, height: @target_height || 10000, size: :both)
+          img.thumbnail_image(@target_width || 10_000, height: @target_height || 10_000, size: :both)
         end
       end
 
@@ -65,7 +68,7 @@ module Loomy
           if @crop_mode == :centre
             Vips::Image.thumbnail(@path, @target_width, height: @target_height, size: :both, crop: :centre)
           else
-            Vips::Image.thumbnail(@path, @target_width || 10000, height: @target_height || 10000, size: :both)
+            Vips::Image.thumbnail(@path, @target_width || 10_000, height: @target_height || 10_000, size: :both)
           end
         else
           img = Vips::Image.new_from_file(@path)

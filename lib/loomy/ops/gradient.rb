@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module Loomy
   module Ops
     class Gradient < Base
@@ -18,7 +20,7 @@ module Loomy
         mask  = render_mask
         res   = (base + mask.bandjoin([mask, mask]) * diff[0..2]).copy(interpretation: :srgb)
         alpha = mask * diff[3] + @from.a
-        
+
         res.bandjoin(alpha)
       end
 
@@ -26,7 +28,7 @@ module Loomy
 
       def render_mask
         xyz = Vips::Image.xyz(width, height)
-        
+
         case direction
         when :top_bottom then xyz.extract_band(1) / height.to_f
         when :left_right then xyz.extract_band(0) / width.to_f

@@ -1,12 +1,14 @@
-require "test_helper"
-require "loomy/ops/load"
-require "loomy/ops/resize"
-require "loomy/ops/trim"
-require "loomy/planner/optimizer"
+# frozen_string_literal: true
+
+require 'test_helper'
+require 'loomy/ops/load'
+require 'loomy/ops/resize'
+require 'loomy/ops/trim'
+require 'loomy/planner/optimizer'
 
 class PlannerOptimizerTest < Minitest::Test
   def test_smart_load_injection
-    load_op = Loomy::Ops::Load.new("test.png")
+    load_op = Loomy::Ops::Load.new('test.png')
     resize_op = Loomy::Ops::Resize.new(input: load_op, width: 100, height: 100, fit: :cover)
 
     optimizer = Loomy::Planner::Optimizer.new
@@ -18,7 +20,7 @@ class PlannerOptimizerTest < Minitest::Test
   end
 
   def test_smart_load_with_trim
-    load_op = Loomy::Ops::Load.new("test.png")
+    load_op = Loomy::Ops::Load.new('test.png')
     trim_op = Loomy::Ops::Trim.new(input: load_op)
     resize_op = Loomy::Ops::Resize.new(input: trim_op, width: 50, height: 50)
 
@@ -30,7 +32,7 @@ class PlannerOptimizerTest < Minitest::Test
   end
 
   def test_no_optimization_when_no_resize
-    load_op = Loomy::Ops::Load.new("test.png")
+    load_op = Loomy::Ops::Load.new('test.png')
 
     optimizer = Loomy::Planner::Optimizer.new
     result = optimizer.optimize(load_op)

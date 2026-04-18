@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module Loomy
   module Ops
     class Pipeline < Base
@@ -12,6 +14,7 @@ module Loomy
 
       def add_layer(op, properties = {})
         return unless op
+
         @compositor.add_layer(op, properties)
       end
 

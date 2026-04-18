@@ -1,6 +1,8 @@
-require "vips"
-require "zeitwerk"
-require "loomy/version"
+# frozen_string_literal: true
+
+require 'vips'
+require 'zeitwerk'
+require 'loomy/version'
 
 module Loomy
   class Error < StandardError; end
@@ -11,8 +13,8 @@ module Loomy
 
   loader = Zeitwerk::Loader.for_gem
   loader.inflector.inflect(
-    "dsl" => "DSL",
-    "ast" => "AST"
+    'dsl' => 'DSL',
+    'ast' => 'AST'
   )
   loader.setup
 
