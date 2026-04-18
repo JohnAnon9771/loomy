@@ -7,6 +7,7 @@ module Loomy
       end
 
       def add_layer(op, properties = {})
+        return unless op
         @compositor.add_layer(op, properties)
       end
 
