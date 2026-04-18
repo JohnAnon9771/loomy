@@ -57,23 +57,15 @@ module Loomy
 
       # Effects
       def displace(map: nil, from_mask: nil, scale: 20, intensity: 1.0, **opts)
-        if from_mask
-          @layer.add_effect(AST::Effects::MaskDisplacement.new(
-                              from_mask: from_mask, scale: scale, intensity: intensity, **opts
-                            ))
-        else
-          @layer.add_effect(AST::Effects::Displacement.new(map: map, scale: scale, **opts))
-        end
+        @layer.add_effect(
+          AST::Effects::Displacement.new(map: map, from_mask: from_mask, scale: scale, intensity: intensity, **opts)
+        )
       end
 
       def relight(map: nil, from_mask: nil, strength: 1.0, type: :soft_light, **opts)
-        if from_mask
-          @layer.add_effect(AST::Effects::MaskLighting.new(
-                              from_mask: from_mask, strength: strength, type: type, **opts
-                            ))
-        else
-          @layer.add_effect(AST::Effects::Lighting.new(map: map, strength: strength, type: type, **opts))
-        end
+        @layer.add_effect(
+          AST::Effects::Lighting.new(map: map, from_mask: from_mask, strength: strength, type: type, **opts)
+        )
       end
 
       def blur(radius:)                     = @layer.add_effect(AST::Effects::Blur.new(radius: radius))

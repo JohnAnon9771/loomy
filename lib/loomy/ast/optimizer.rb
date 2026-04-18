@@ -50,7 +50,7 @@ module Loomy
 
         # Prune if fixed dimensions are 0
         return nil if (node.width.is_a?(Numeric) && node.width.zero?) ||
-                     (node.height.is_a?(Numeric) && node.height.zero?)
+                      (node.height.is_a?(Numeric) && node.height.zero?)
 
         node.effects.map! { |e| visit(e) }.compact!
         node
@@ -87,18 +87,18 @@ module Loomy
         node.brightness == 1.0 && node.contrast == 1.0 ? nil : node
       end
 
-      def visit_lighting_effect(node)
-        node.strength <= 0 ? nil : node
-      end
-
-      def visit_mask_displacement_effect(node)
-        return nil if node.intensity <= 0 || node.mask_path.nil?
+      def visit_displacement_effect(node)
+        return nil if node.scale <= 0
+        return nil if node.from_mask? && node.from_mask.nil?
+        return nil if !node.from_mask? && node.map_path.nil?
 
         node
       end
 
-      def visit_mask_lighting_effect(node)
-        return nil if node.strength <= 0 || node.mask_path.nil?
+      def visit_lighting_effect(node)
+        return nil if node.strength <= 0
+        return nil if node.from_mask? && node.from_mask.nil?
+        return nil if !node.from_mask? && node.map_path.nil?
 
         node
       end

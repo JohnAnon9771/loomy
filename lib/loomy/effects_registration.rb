@@ -23,55 +23,54 @@ module Loomy
       })
 
       Loomy.register_effect(AST::Effects::Displacement, lambda { |img, effect|
-        map = Vips::Image.new_from_file(effect.properties[:map])
-        map = map.thumbnail_image(img.width, height: img.height, size: :both, crop: :centre)
+        map =
+          if effect.from_mask?
+            mask = Vips::Image.new_from_file(effect.from_mask)
+            mask = mask.thumbnail_image(img.width, height: img.height, size: :both, crop: :centre)
+            generate_displacement_map(mask, effect.intensity)
+          else
+            Vips::Image.new_from_file(effect.map_path).thumbnail_image(img.width, height: img.height, size: :both, crop: :centre)
+          end
 
-        if img.respond_to?(:displace)
-          img.displace(map, scale: effect.scale)
+        if map.width != img.width || map.height != img.height
+          map = map.thumbnail_image(img.width, height: img.height, size: :both, crop: :centre)
+        end
+
+        if effect.from_mask?
+          map = ensure_alpha(map, img)
+          img = img.composite(map, :overlay, x: effect.scale, y: effect.scale)
+        elsif img.respond_to?(:displace)
+          img = img.displace(map, scale: effect.scale)
         else
           map = ensure_alpha(map, img)
-          img.composite(map, :overlay, x: effect.scale, y: effect.scale)
+          img = img.composite(map, :overlay, x: effect.scale, y: effect.scale)
         end
+
+        img.format == :float ? img.cast(:uchar) : img
       })
 
       Loomy.register_effect(AST::Effects::Lighting, lambda { |img, effect|
-        map = Vips::Image.new_from_file(effect.properties[:map])
-        map = map.thumbnail_image(img.width, height: img.height, size: :both, crop: :centre)
-        img.composite(map, :soft_light)
-      })
+        map =
+          if effect.from_mask?
+            mask = Vips::Image.new_from_file(effect.from_mask)
+            mask = mask.thumbnail_image(img.width, height: img.height, size: :both, crop: :centre)
+            generate_lighting_map(mask, effect.strength)
+          else
+            Vips::Image.new_from_file(effect.map_path).thumbnail_image(img.width, height: img.height, size: :both, crop: :centre)
+          end
 
-      Loomy.register_effect(AST::Effects::MaskDisplacement, lambda { |img, effect|
-        mask_path = effect.mask_path
-        return img unless mask_path
-
-        mask = Vips::Image.new_from_file(mask_path)
-        mask = mask.thumbnail_image(img.width, height: img.height, size: :both, crop: :centre)
-
-        displacement_map = generate_displacement_map(mask, effect.intensity)
-
-        if displacement_map.width != img.width || displacement_map.height != img.height
-          displacement_map = displacement_map.thumbnail_image(img.width, height: img.height, size: :both, crop: :centre)
+        img = if effect.from_mask?
+          rgb = img.bands >= 4 ? img.extract_band(0, n: img.bands - 1) : img
+          lighting_normalized = map / 128.0
+          modulated = rgb * lighting_normalized
+          modulated = modulated.bandjoin(img.extract_band(img.bands - 1)) if img.bands >= 4
+          modulated.cast(:uchar)
+        else
+          blend_type = effect.type == :hard_light ? :hard_light : :soft_light
+          img.composite(map, blend_type)
         end
 
-        displacement_map = ensure_alpha(displacement_map, img)
-
-        img.composite(displacement_map, :overlay, x: effect.scale, y: effect.scale)
-      })
-
-      Loomy.register_effect(AST::Effects::MaskLighting, lambda { |img, effect|
-        mask_path = effect.mask_path
-        return img unless mask_path
-
-        mask = Vips::Image.new_from_file(mask_path)
-        mask = mask.thumbnail_image(img.width, height: img.height, size: :both, crop: :centre)
-
-        lighting_map = generate_lighting_map(mask, effect.strength)
-
-        rgb = img.bands >= 4 ? img.extract_band(0, n: img.bands - 1) : img
-        lighting_normalized = lighting_map / 128.0
-        modulated = rgb * lighting_normalized
-        modulated = modulated.bandjoin(img.extract_band(img.bands - 1)) if img.bands >= 4
-        modulated.cast(:uchar)
+        img.format == :float ? img.cast(:uchar) : img
       })
     end
 

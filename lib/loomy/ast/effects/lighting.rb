@@ -5,11 +5,23 @@ module Loomy
     module Effects
       class Lighting < Effect
         def type
-          properties[:type] || :ambient
+          properties[:type] || :soft_light
         end
 
         def strength
           properties[:strength] || 1.0
+        end
+
+        def from_mask
+          properties[:from_mask]
+        end
+
+        def from_mask?
+          !properties[:from_mask].nil?
+        end
+
+        def map_path
+          properties[:map]
         end
 
         def accept(visitor)

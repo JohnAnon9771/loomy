@@ -35,8 +35,6 @@ module Loomy
       def visit_blur_effect(node) = visit_effect(node)
       def visit_grayscale_effect(node) = visit_effect(node)
       def visit_color_adjustment_effect(node) = visit_effect(node)
-      def visit_mask_displacement_effect(node) = visit_effect(node)
-      def visit_mask_lighting_effect(node) = visit_effect(node)
     end
   end
 end
