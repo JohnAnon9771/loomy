@@ -15,7 +15,11 @@ module Loomy
       end
 
       def visit_canvas(node)
-        pipeline = Ops::Pipeline.new(background_width: node.width, background_height: node.height)
+        pipeline = Ops::Pipeline.new(
+          background_width: node.width,
+          background_height: node.height,
+          dpi: node.dpi
+        )
 
         node.children.each do |layer|
           pipeline.add_layer(visit(layer), layer.properties) if layer
