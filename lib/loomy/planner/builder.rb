@@ -17,12 +17,15 @@ module Loomy
       def visit_canvas(node)
         pipeline = Ops::Pipeline.new(
           background_width: node.width,
-          background_height: node.height,
-          dpi: node.dpi
+          background_height: node.height
         )
 
         node.children.each do |layer|
           pipeline.add_layer(visit(layer), layer.properties) if layer
+        end
+
+        if node.dpi
+          pipeline = Ops::DpiMetadata.new(input: pipeline, dpi: node.dpi)
         end
 
         pipeline
