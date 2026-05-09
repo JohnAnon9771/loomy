@@ -65,6 +65,12 @@ module Loomy
         Bounds.new(x: left, y: top, width: w, height: h)
       end
 
+      # Mask
+      def mask(source = nil, method: :dest_in, **options)
+        @layer.properties[:mask] = source || options[:path]
+        @layer.properties[:mask_method] = method
+      end
+
       # Nested structure support
       def layer(source = nil, **options, &block)
         node = AST::Layer.new(source: source, **options)

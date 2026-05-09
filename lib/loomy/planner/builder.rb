@@ -79,6 +79,11 @@ module Loomy
         op = build_base_op(node)
         return nil unless op
 
+        if node.properties[:mask]
+          mask_source = Ops::Load.new(node.properties[:mask])
+          op = Ops::Mask.new(input: op, mask: mask_source, method: node.properties[:mask_method] || :dest_in)
+        end
+
         op = Ops::Trim.new(input: op) if node.trim && node.source_type == :file
 
         w = resolve_dim(node.width, @width_stack.last)
