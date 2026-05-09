@@ -3,6 +3,8 @@
 module Loomy
   module Engine
     class VipsBackend
+      MM_PER_INCH = 25.4
+
       def initialize(canvas)
         @canvas = canvas
       end
@@ -15,8 +17,8 @@ module Loomy
 
         if @canvas.dpi
           dpi = @canvas.dpi.to_f
-          image.xres = dpi / 25.4
-          image.yres = dpi / 25.4
+          image.xres = dpi / MM_PER_INCH
+          image.yres = dpi / MM_PER_INCH
         end
 
         image
