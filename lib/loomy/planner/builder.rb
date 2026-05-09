@@ -80,8 +80,7 @@ module Loomy
         return nil unless op
 
         if node.properties[:mask]
-          mask_source = Ops::Load.new(node.properties[:mask])
-          op = Ops::Mask.new(input: op, mask: mask_source, method: node.properties[:mask_method] || :dest_in)
+          op = Ops::Mask.new(input: op, mask: node.properties[:mask], method: node.properties[:mask_method] || :dest_in)
         end
 
         op = Ops::Trim.new(input: op) if node.trim && node.source_type == :file

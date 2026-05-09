@@ -21,22 +21,11 @@ module Loomy
       def load_mask(img)
         mask = Vips::Image.new_from_file(@mask_source)
 
+        # Resize mask to match image dimensions
         if mask.width != img.width || mask.height != img.height
           mask = mask.thumbnail_image(img.width, height: img.height, size: :both, crop: :centre)
         end
 
-        mask = expand_mask_bands(mask, img) if mask.bands < img.bands
-
-        mask
-      end
-
-      def expand_mask_bands(mask, img)
-        return mask if mask.bands >= img.bands
-
-        target_bands = img.bands
-        missing = target_bands - mask.bands
-
-        missing.times { mask = mask.bandjoin(mask) }
         mask
       end
     end
