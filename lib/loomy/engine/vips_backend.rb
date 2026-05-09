@@ -11,7 +11,15 @@ module Loomy
         optimized_plan = Planner::Builder.new.build(@canvas)
 
         context = { source_cache: {} }
-        optimized_plan.call(context)
+        image = optimized_plan.call(context)
+
+        if @canvas.dpi
+          dpi = @canvas.dpi.to_f
+          image.xres = dpi / 25.4
+          image.yres = dpi / 25.4
+        end
+
+        image
       end
     end
   end
