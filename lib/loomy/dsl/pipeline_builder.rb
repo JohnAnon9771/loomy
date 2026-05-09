@@ -15,7 +15,7 @@ module Loomy
         # or we wrapp it. For the prompt example: Loomy.render "file", size: [w, h] do ...
         # The options contain size.
 
-        canvas = AST::Canvas.new(size: @options[:size])
+        canvas = AST::Canvas.new(size: @options[:size], dpi: @options[:dpi])
         CanvasBuilder.new(canvas).evaluate(&@block)
         canvas
       end

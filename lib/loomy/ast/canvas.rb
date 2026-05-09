@@ -11,6 +11,10 @@ module Loomy
         properties[:size]&.at(1)
       end
 
+      def dpi
+        properties[:dpi]
+      end
+
       def accept(visitor)
         visitor.visit_canvas(self)
       end

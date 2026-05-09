@@ -26,7 +26,7 @@ module Loomy
     end
 
     def render(output_path, **options, &block)
-      image = generate(**options.slice(:size), &block)
+      image = generate(**options.slice(:size, :dpi), &block)
       image.write_to_file(output_path, **write_options(options))
     end
 
@@ -54,7 +54,7 @@ module Loomy
     private
 
     def write_options(options)
-      options.except(:size).transform_keys { |k| WRITE_OPTION_ALIASES.fetch(k, k) }
+      options.except(:size, :dpi).transform_keys { |k| WRITE_OPTION_ALIASES.fetch(k, k) }
     end
   end
 end
