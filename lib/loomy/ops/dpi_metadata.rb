@@ -14,9 +14,7 @@ module Loomy
         image = @input.call(context)
 
         if @dpi
-          dpi = @dpi.to_f
-          image.xres = dpi / MM_PER_INCH
-          image.yres = dpi / MM_PER_INCH
+          image = image.copy(xres: @dpi.to_f / MM_PER_INCH, yres: @dpi.to_f / MM_PER_INCH)
         end
 
         image
