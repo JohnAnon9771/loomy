@@ -3,19 +3,9 @@
 require 'test_helper'
 
 class TrimTest < Minitest::Test
-  def setup
-    # Create an image with a central red square and transparent borders
-    # 500x500 image, 100x100 red square in middle
-    @trim_source = 'test/assets/trim_test_source.png'
-
-    # Red square 100x100
-    square = Vips::Image.black(100, 100, bands: 3).linear([1, 1, 1], [255, 0, 0]).bandjoin(255)
-
-    # Embed square in center
-    final = square.embed(200, 200, 500, 500, extend: :background, background: [0, 0, 0, 0])
-    final.write_to_file(@trim_source)
-  end
-
+  # trim_test_source.png is a committed fixture: 500x500 transparent with a
+  # 100x100 opaque red square centred at 200,200. Its contract is pinned in
+  # test/fixtures_test.rb.
   def test_trim_enabled
     reference = 'test/assets/references/trim_enabled.png'
 

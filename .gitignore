@@ -1,2 +1,13 @@
 .DS_Store
-test/tmp/*
+
+# File-manager / editor artifacts (an empty `.!45430!overlay_large.png` was
+# committed into test/assets this way once).
+.!*
+
+# Test and benchmark scratch output. Fixtures (test/assets) and golden
+# references (test/assets/references) are committed and must stay tracked.
+test/tmp/
+bench/tmp/
+
+# Bundler
+/.bundle/

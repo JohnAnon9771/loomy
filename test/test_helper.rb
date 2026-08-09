@@ -5,93 +5,74 @@ require 'minitest/autorun'
 require 'vips'
 require 'fileutils'
 
+# Test fixtures under test/assets are committed binaries, not generated at run
+# time. They are the inputs the golden references in test/assets/references were
+# produced from, so regenerating them from code would silently move every
+# golden. test/fixtures_test.rb pins their contract instead.
 module TestHelper
-  def self.generate_assets
-    FileUtils.mkdir_p('test/assets')
-    FileUtils.mkdir_p('test/tmp')
+  TMP_DIR = 'test/tmp'
 
-    # Base red image
-    unless File.exist?('test/assets/base.png')
-      Vips::Image.black(500, 500, bands: 3)
-                 .linear([1, 1, 1], [255, 0, 0])
-                 .bandjoin(255)
-                 .cast(:uchar)
-                 .write_to_file('test/assets/base.png')
-    end
+  MISSING_REFERENCE = <<~MSG
+    Reference image not found: %s
 
-    # Blue square
-    unless File.exist?('test/assets/blue_square.png')
-      Vips::Image.black(200, 200, bands: 3)
-                 .linear([1, 1, 1], [0, 0, 255])
-                 .bandjoin(255)
-                 .cast(:uchar)
-                 .write_to_file('test/assets/blue_square.png')
-    end
+    If this is a new golden test, generate the baseline deliberately:
 
-    # Grid for displacement
-    unless File.exist?('test/assets/grid.png')
-      grid = Vips::Image.black(200, 200, bands: 3)
-                        .linear([1, 1, 1], [128, 128, 128])
-                        .bandjoin(255)
-                        .cast(:uchar)
-      grid.write_to_file('test/assets/grid.png')
-    end
+        bundle exec rake test:baseline
 
-    # Displacement map
-    unless File.exist?('test/assets/disp_map.png')
-      Vips::Image.black(200, 200, bands: 1)
-                 .linear([1], [50])
-                 .cast(:uchar)
-                 .write_to_file('test/assets/disp_map.png')
-    end
+    Then inspect the generated PNG before committing it. References are the
+    visual contract of the suite; they must never be created as a side effect
+    of a normal test run.
+  MSG
 
-    # Large assets for integration
-    unless File.exist?('test/assets/base_large.png')
-      Vips::Image.black(1000, 1000, bands: 3).linear([1, 1, 1],
-                                                     [100, 100,
-                                                      100]).bandjoin(255).cast(:uchar).write_to_file('test/assets/base_large.png')
-    end
+  def self.baseline_mode?
+    ENV['LOOMY_BASELINE'] == '1'
+  end
 
-    return if File.exist?('test/assets/overlay_large.png')
+  def self.setup_tmp_dir
+    FileUtils.mkdir_p(TMP_DIR)
+  end
 
-    Vips::Image.black(1000, 1000, bands: 3).linear([1, 1, 1],
-                                                   [200, 200,
-                                                    200]).bandjoin(128).cast(:uchar).write_to_file('test/assets/overlay_large.png')
+  # Path for a test to write output into. Never write to the repo root or into
+  # test/assets: both are versioned.
+  def tmp_path(name)
+    FileUtils.mkdir_p(TestHelper::TMP_DIR)
+    File.join(TestHelper::TMP_DIR, name)
   end
 
   def assert_image_similar(expected_path, actual_image, tolerance: 0.1)
-    # If actual_image is a path, load it
-    actual = if actual_image.is_a?(String)
-               Vips::Image.new_from_file(actual_image)
-             else
-               actual_image
-             end
+    actual = actual_image.is_a?(String) ? Vips::Image.new_from_file(actual_image) : actual_image
 
-    unless File.exist?(expected_path)
-      # Auto-generate reference if missing (careful in CI)
+    if TestHelper.baseline_mode?
       FileUtils.mkdir_p(File.dirname(expected_path))
       actual.write_to_file(expected_path)
       return
     end
 
+    flunk(format(TestHelper::MISSING_REFERENCE, expected_path)) unless File.exist?(expected_path)
+
     expected = Vips::Image.new_from_file(expected_path)
 
-    # Ensure same size and bands for comparison
     if expected.width != actual.width || expected.height != actual.height
-      flunk "Image dimensions mismatch: expected #{expected.width}x#{expected.height}, got #{actual.width}x#{actual.height}"
+      flunk "Image dimensions mismatch for #{expected_path}: " \
+            "expected #{expected.width}x#{expected.height}, got #{actual.width}x#{actual.height}"
     end
 
-    # Calculate Mean Absolute Error (MAE)
-    # Convert to float to avoid wrap-around in subtraction
+    if expected.bands != actual.bands
+      flunk "Image band count mismatch for #{expected_path}: " \
+            "expected #{expected.bands}, got #{actual.bands}"
+    end
+
+    # Mean Absolute Error. Cast to float first so per-band subtraction cannot
+    # wrap around on uchar data.
     diff = (expected.cast(:float) - actual.cast(:float)).abs.avg
 
-    assert diff <= tolerance, "Image similarity failed. Mean difference: #{diff} (tolerance: #{tolerance})"
+    assert diff <= tolerance,
+           "Image similarity failed for #{expected_path}. Mean difference: #{diff} (tolerance: #{tolerance})"
   end
 end
 
-TestHelper.generate_assets
+TestHelper.setup_tmp_dir
 
-# Mixin helper to Minitest
 module Minitest
   class Test
     include TestHelper
