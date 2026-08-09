@@ -5,6 +5,7 @@ require 'test_helper'
 class SourceLoaderTest < Minitest::Test
   BASE = 'test/assets/base.png' # 500x500
   TRIMMABLE = 'test/assets/trim_test_source.png' # 500x500, 100x100 of content
+  SINGLE_BAND_MAP = 'test/assets/disp_map.png' # 200x200, one band
 
   def setup
     @loader = Loomy::Render::SourceLoader.new
@@ -64,6 +65,33 @@ class SourceLoaderTest < Minitest::Test
     image = @loader.load_trimmed(TRIMMABLE)
 
     assert_equal [100, 100], [image.width, image.height]
+  end
+
+  # An effect map's bands are read positionally -- the first drives x, the
+  # second drives y -- so the alpha `load` adds to an opaque source would be
+  # read as displacement data.
+  def test_map_load_does_not_add_an_alpha_band
+    map = @loader.load_map(SINGLE_BAND_MAP, target(400, 400, fit: :cover))
+
+    assert_equal 1, map.bands
+    assert_equal [400, 400], [map.width, map.height]
+  end
+
+  def test_map_load_matches_a_plain_covering_thumbnail
+    ours = @loader.load_map(SINGLE_BAND_MAP, target(137, 137, fit: :cover))
+    plain = Vips::Image
+            .new_from_file(SINGLE_BAND_MAP)
+            .thumbnail_image(137, height: 137, size: :both, crop: :centre)
+
+    assert_equal [plain.width, plain.height], [ours.width, ours.height]
+    assert_in_delta 0.0, (ours.cast(:float) - plain.cast(:float)).abs.avg, 0.001
+  end
+
+  def test_map_load_is_cached_per_path_and_target
+    first = @loader.load_map(SINGLE_BAND_MAP, target(64, 64, fit: :cover))
+
+    assert_same first, @loader.load_map(SINGLE_BAND_MAP, target(64, 64, fit: :cover))
+    refute_same first, @loader.load_map(SINGLE_BAND_MAP, target(32, 32, fit: :cover))
   end
 
   # PNG has no shrink-on-load: routing it through Vips::Image.thumbnail(path)

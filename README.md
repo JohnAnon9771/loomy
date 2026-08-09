@@ -162,8 +162,21 @@ class Vignette < Loomy::AST::Effect
   def no_op? = strength.zero?
 end
 
-Loomy.register_effect(Vignette, ->(image, effect) {
+Loomy.register_effect(Vignette, ->(image, effect, loader) {
   image.my_vips_operation(effect.strength)
+})
+```
+
+The third argument is the render's source loader. An effect that reads a file
+from disk — a displacement or lighting map, say — should ask it rather than
+opening the file itself, so the read is cached for the render and any
+orientation tag is applied:
+
+```ruby
+Loomy.register_effect(Overlay, ->(image, effect, loader) {
+  target = Loomy::Render::Target.new(width: image.width, height: image.height, fit: :cover)
+
+  image.composite(loader.load_map(effect.map, target), :over)
 })
 ```
 

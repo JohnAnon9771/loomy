@@ -16,7 +16,7 @@ module Loomy
           frames: frames,
           canvas_size: canvas_size,
           loader: @loader,
-          effects: EffectRegistry.snapshot
+          effects: EffectRegistry.snapshot(@loader)
         ).call(@canvas)
       end
     end

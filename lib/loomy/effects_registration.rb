@@ -14,17 +14,17 @@ module Loomy
       Loomy.register_effect(AST::Effects::Lighting, method(:relight))
     end
 
-    def self.blur(image, effect)
+    def self.blur(image, effect, _loader)
       image.gaussblur(effect.radius)
     end
 
-    def self.adjust_color(image, effect)
+    def self.adjust_color(image, effect, _loader)
       image.linear([effect.contrast * effect.brightness], [0])
     end
 
     # Converting straight to :b_w would drop the alpha channel, so it is split
     # off and rejoined.
-    def self.grayscale(image, _effect)
+    def self.grayscale(image, _effect, _loader)
       return image.colourspace(:b_w) unless image.has_alpha?
 
       alpha = image.extract_band(image.bands - 1)
@@ -41,8 +41,8 @@ module Loomy
     # single-band map.
     NEUTRAL_DISPLACEMENT = 128.0
 
-    def self.displace(image, effect)
-      map = fitted_map(effect.map, image).cast(:float)
+    def self.displace(image, effect, loader)
+      map = fitted_map(loader, effect.map, image).cast(:float)
       horizontal = displacement_band(map, 0, effect.scale)
       vertical = displacement_band(map, map.bands > 1 ? 1 : 0, effect.scale)
 
@@ -53,19 +53,17 @@ module Loomy
       (map.extract_band(band) - NEUTRAL_DISPLACEMENT) / NEUTRAL_DISPLACEMENT * scale
     end
 
-    def self.relight(image, effect)
-      map = fitted_map(effect.map, image)
+    def self.relight(image, effect, loader)
+      map = fitted_map(loader, effect.map, image)
 
       image.composite(map, :soft_light)
     end
 
-    # Effect maps are stretched to cover the image they modulate.
-    def self.fitted_map(path, image)
-      raise SourceNotFound, path unless path && File.readable?(path.to_s)
-
-      Vips::Image
-        .new_from_file(path.to_s)
-        .thumbnail_image(image.width, height: image.height, size: :both, crop: :centre)
+    # Effect maps are stretched to cover the image they modulate. They go
+    # through the loader like any other source, so a map used by two effects is
+    # read once and an orientation tag on it is applied.
+    def self.fitted_map(loader, path, image)
+      loader.load_map(path, Render::Target.new(width: image.width, height: image.height, fit: :cover))
     end
   end
 end

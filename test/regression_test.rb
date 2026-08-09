@@ -49,7 +49,7 @@ class RegressionTest < Minitest::Test
     frames, size = Loomy::Layout::Engine.new(loader).call(canvas)
     Loomy::Render::Renderer.new(
       frames: frames, canvas_size: size, loader: loader,
-      effects: Loomy::Render::EffectRegistry.snapshot
+      effects: Loomy::Render::EffectRegistry.snapshot(loader)
     ).call(canvas)
 
     # base_large.png is 4200x4800; contained into 200x200 that is 175x200.
@@ -184,5 +184,6 @@ class RegressionTest < Minitest::Test
 
     def dimensions(path) = @loader.dimensions(path)
     def trim_bounds(path) = @loader.trim_bounds(path)
+    def load_map(path, target) = @loader.load_map(path, target)
   end
 end

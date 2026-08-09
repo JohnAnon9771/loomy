@@ -63,6 +63,15 @@ module Loomy
         end
       end
 
+      # An effect map scaled to cover the image it modulates.
+      #
+      # Not `load`: a map's bands are read positionally -- the first drives x
+      # and the second drives y -- so the alpha band `load` adds to an opaque
+      # source would be read as displacement data.
+      def load_map(path, target)
+        @images[[path, :map, target]] ||= resize(oriented(path), target)
+      end
+
       private
 
       def header(path)
