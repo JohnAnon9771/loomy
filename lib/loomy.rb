@@ -29,8 +29,8 @@ module Loomy
   class << self
     def generate(**options, &)
       canvas = DSL::PipelineBuilder.new(options, &).build
-      canvas = AST::Optimizer.new(canvas).call
-      Engine::VipsBackend.new(canvas).call
+      canvas = AST::Pruner.new(canvas).call
+      Render::Pipeline.new(canvas).call
     end
 
     def render(output_path, **options, &)

@@ -2,43 +2,27 @@
 
 module Loomy
   module AST
+    # Double dispatch over the node types. Layout and rendering are both walks
+    # over the same small set of nodes, and going through #accept means adding a
+    # node type without teaching every walker about it fails loudly here rather
+    # than falling into a silent else-branch.
+    #
+    # There is deliberately no per-effect-class hook. Effects differ in their
+    # parameters, not in how the tree is walked, so one visit_effect is enough;
+    # the previous one-method-per-built-in-effect arrangement was also what made
+    # custom effects second-class.
     class Visitor
-      def visit(node)
-        node.accept(self)
-      end
+      def visit(node) = node.accept(self)
 
       def visit_node(node)
-        # Default traversal
-        node.children.each { |child| visit(child) }
+        raise NotImplementedError, "#{self.class} does not handle #{node.class}"
       end
 
-      def visit_canvas(node)
-        visit_node(node)
-      end
-
-      def visit_layer(node)
-        visit_node(node)
-      end
-
-      def visit_group(node)
-        visit_node(node)
-      end
-
-      def visit_stack(node)
-        visit_node(node)
-      end
-
-      def visit_effect(node)
-        # Effects usually don't have children, but if they did:
-        visit_node(node)
-      end
-
-      # Specific effects can map to visit_effect or have their own
-      def visit_displacement_effect(node) = visit_effect(node)
-      def visit_lighting_effect(node) = visit_effect(node)
-      def visit_blur_effect(node) = visit_effect(node)
-      def visit_grayscale_effect(node) = visit_effect(node)
-      def visit_color_adjustment_effect(node) = visit_effect(node)
+      def visit_canvas(node) = visit_node(node)
+      def visit_layer(node)  = visit_node(node)
+      def visit_group(node)  = visit_node(node)
+      def visit_stack(node)  = visit_node(node)
+      def visit_effect(node) = visit_node(node)
     end
   end
 end

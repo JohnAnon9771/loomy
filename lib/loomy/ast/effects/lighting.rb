@@ -4,17 +4,11 @@ module Loomy
   module AST
     module Effects
       class Lighting < Effect
-        def type
-          properties[:type] || :ambient
-        end
+        def type     = properties[:type] || :ambient
+        def strength = properties[:strength] || 1.0
+        def map      = properties[:map]
 
-        def strength
-          properties[:strength] || 1.0
-        end
-
-        def accept(visitor)
-          visitor.visit_lighting_effect(self)
-        end
+        def no_op? = strength <= 0
       end
     end
   end
