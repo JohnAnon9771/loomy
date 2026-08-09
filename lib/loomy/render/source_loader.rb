@@ -60,8 +60,13 @@ module Loomy
         image = @sources.oriented(path)
         return with_alpha(image) unless target.resize?(image)
 
+        # Opening the file a second time means repeating what the cache decided
+        # counts as a decodable source. Without that, the shrink-on-load formats
+        # -- which is most of what arrives from a browser -- would be the only
+        # ones a truncated file got through.
         if shrink_on_load?(path)
-          Vips::Image.thumbnail(path.to_s, target.width || NO_LIMIT, **thumbnail_options(target))
+          Vips::Image.thumbnail(path.to_s, target.width || NO_LIMIT,
+                                fail_on: SourceCache::FAIL_ON, **thumbnail_options(target))
         else
           image.thumbnail_image(target.width || NO_LIMIT, **thumbnail_options(target))
         end

@@ -20,15 +20,55 @@ Restructure of the rendering pipeline. The public API — `Loomy.render`,
 - Main-axis distribution on stacks: `distribute:` accepts `:start`, `:center`,
   `:end` and `:space_between`. The old AST described `valign` as main-axis
   distribution in a comment, but nothing ever implemented it.
-- `Loomy::Error` hierarchy that is actually raised: `SourceNotFound`,
-  `InvalidColor`, `UnknownStyle`, `UnknownProperty`, `InvalidValue`,
-  `LayoutError`.
+- `Loomy::Error` hierarchy that is actually raised, in two levels.
+  `DeclarationError` covers a declaration that cannot be honoured —
+  `SourceNotFound`, `InvalidSource`, `InvalidColor`, `UnknownStyle`,
+  `UnknownProperty`, `InvalidValue`, `UnknownEffect`, `LayoutError` — and
+  `ProcessingError` covers a declaration that could not be carried out:
+  `BackendError`, `EncodeError`, `InternalError`. Two levels rather than a flat
+  list because a caller routing errors — to an HTTP status, a retry, a bug
+  report — rescues the category, so a leaf added later needs no change
+  downstream. Each error also answers `#code` with a stable symbol, which is
+  what belongs on a wire: class names get renamed and a downstream error code
+  should not move when they do. No `status_code`: whether a missing source is a
+  404, a 400 or a 422 depends on where the path came from, and only the caller
+  knows.
+- Every `Vips::Error` is wrapped instead of escaping raw, with `#cause`
+  preserved and libvips' own message quoted under ours. `Loomy::Error` was
+  documented as the single catch-all a caller needs, and it was not: a broken
+  source, a bad blend mode, an unknown output format and a failed encode all
+  came out as `Vips::Error`, which does not descend from it. Telling "the image
+  you sent is broken" from "libvips failed" meant matching on a message string
+  that moves with every libvips upgrade.
+- Sources are opened with `fail_on: :truncated`, so a file whose pixel data
+  stops half-way raises `InvalidSource` naming it. A truncated PNG used to open,
+  measure, composite and write with no exception at all — libvips filled the
+  missing half and the output was quietly wrong — while the same truncation in a
+  JPEG was refused, so whether a partial upload was an error depended on the
+  format. Pixel-neutral on every reference image.
+- The write distinguishes a source that will not decode from an encode that
+  failed, which arrive as the same exception: libvips is demand-driven, so the
+  write is the first time any pixel is read. On failure the sources are re-read
+  to attribute it, which costs a decode per source and only ever after a failure
+  has already happened.
+- `blend:` is checked at declaration time by asking libvips — a one-pixel
+  composite, once per mode per process — and raises `InvalidValue` listing every
+  mode it would have taken. It was previously left unchecked on the grounds that
+  copying libvips' list here would drift from the installed version, which is
+  still true and is why the list is asked for rather than copied. Unchecked, and
+  with the render now wrapping what libvips raises, a caller's typo would have
+  been reported as `ProcessingError` — our fault — when it is the declaration
+  that is wrong.
+- An effect with no registered processor raises `UnknownEffect` instead of being
+  skipped. Skipping handed back an image the declaration did not ask for with
+  nothing saying so — the same class of silently-wrong output as an unparseable
+  colour rendering black. Lookup is by exact class, so this also catches a
+  subclass of a registered effect, which used to be dropped without a word.
 - Values are checked against their vocabulary, not just property names.
   `align: :top`, `valign: :left`, `fit: :squish`, `trim: :yes`,
   `distribute: :around`, `stack(:sideways)`, a misspelled `anchor:` half and an
   unknown gradient `direction:` were all accepted and quietly ignored; each now
-  raises `InvalidValue` naming what was expected. `blend:` is left to libvips,
-  which validates its own enum and already lists the valid modes.
+  raises `InvalidValue` naming what was expected.
 - `width:` and `height:` are checked too, against a union rather than a list: an
   Integer of pixels, a percentage String, or `:fill`. `width: :fil` and
   `width: '50'` used to reach layout as *no size at all*, so the node took the

@@ -35,13 +35,15 @@ module Loomy
     end
 
     def render(output_path, **options, &)
-      image = single_pass(canvas_options(options), &)
-      image.write_to_file(output_path, **write_options(options))
+      image, sources = single_pass(canvas_options(options), &)
+
+      encoding(output_path, sources) { image.write_to_file(output_path, **write_options(options)) }
     end
 
     def to_blob(format, **options, &)
-      image = single_pass(canvas_options(options), &)
-      image.write_to_buffer(format, **write_options(options))
+      image, sources = single_pass(canvas_options(options), &)
+
+      encoding(format, sources) { image.write_to_buffer(format, **write_options(options)) }
     end
 
     def styles
@@ -76,11 +78,36 @@ module Loomy
     # can be streamed rather than decoded whole. That is the whole memory
     # difference between this and `generate`, whose result the caller may read
     # any number of times.
+    #
+    # The cache comes back out alongside the image because the write is the first
+    # thing to read any pixels, so it is the write that finds out whether the
+    # sources were readable.
     def single_pass(options, &)
       canvas, sources = compose(options, &)
       sources.allow_streaming(Render::AccessPlan.streamable(canvas))
 
-      Render::Pipeline.new(canvas, sources).call
+      [Render::Pipeline.new(canvas, sources).call, sources]
+    end
+
+    # Two unrelated failures meet here. libvips is demand-driven, so the write is
+    # the first thing to read a source's pixels at all: a truncated file fails in
+    # the same call an unsupported format does, and a caller deciding between
+    # "the image you sent is broken" and "our options are wrong" gets one
+    # Vips::Error for both. Hence the re-read to tell them apart -- a decode per
+    # source, paid only after a failure, never on the way to a render that works.
+    def encoding(target, sources)
+      yield
+    rescue TypeError => e
+      # ruby-vips converts write options to the types libvips declared them with,
+      # so `quality: 'high'` fails before libvips is reached and before anything
+      # was read. Nothing to attribute.
+      raise EncodeError.new(target, e.message)
+    rescue Vips::Error => e
+      path = sources.undecodable_path
+
+      raise InvalidSource.new(path, e.message) if path
+
+      raise EncodeError.new(target, e.message)
     end
 
     def canvas_options(options)

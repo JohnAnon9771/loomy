@@ -17,6 +17,18 @@ module Loomy
       # EXIF orientation 1 means "already upright".
       UPRIGHT = 1
 
+      # Whether a source that opened has to decode all the way through -- a
+      # separate question from whether its header parsed, and one libvips answers
+      # "no" to by default. Off, a PNG that stops half-way opens, measures and
+      # composites without a word, and the missing half reaches the output as
+      # whatever the decoder had in its buffer; the same truncation in a JPEG is
+      # refused, so off also means the answer depends on the format.
+      #
+      # :truncated rather than :error or :warning, which would also reject the
+      # images phone encoders emit cosmetic complaints about and decode perfectly.
+      # Costs nothing measurable, on either open or a full pixel scan.
+      FAIL_ON = :truncated
+
       def initialize
         @oriented = {}
         @trims = {}
@@ -44,16 +56,23 @@ module Loomy
       # since the same source can be asked both ways in one composition and the
       # two modes are two different scans with two different answers.
       def trim_bounds(path, mode = :auto)
-        @trims[[path, mode]] ||= Trimmer.bounds(oriented(path), mode)
+        @trims[[path, mode]] ||= decoding(path) { Trimmer.bounds(oriented(path), mode) }
       end
 
       # Which libvips loader handles this file, or nil if it will not say.
       # Whether that loader can decode straight to a reduced size is the
       # caller's policy, not this one's.
+      #
+      # Asked of the metadata rather than rescued from reading it. Every image
+      # that came from a file carries the field, so an absent one means a
+      # generated image and not a source that failed. The rescue this replaces
+      # wrapped the whole method, `oriented` included, so an unopenable file came
+      # back as "no loader" and the real failure surfaced later, somewhere with
+      # no path left in scope.
       def loader_name(path)
-        oriented(path).get('vips-loader')
-      rescue Vips::Error
-        nil
+        image = oriented(path)
+
+        image.get_typeof('vips-loader').zero? ? nil : image.get('vips-loader')
       end
 
       # The source with any EXIF orientation tag already applied.
@@ -69,15 +88,41 @@ module Loomy
       # pipeline stage even when it has nothing to do, and almost every image is
       # upright.
       def oriented(path)
-        @oriented[path] ||= begin
+        @oriented[path] ||= decoding(path) do
           raise SourceNotFound, path unless File.readable?(path.to_s)
 
-          image = Vips::Image.new_from_file(path.to_s, access: access_for(path))
+          image = Vips::Image.new_from_file(path.to_s, access: access_for(path), fail_on: FAIL_ON)
           orientation(image) == UPRIGHT ? image : image.autorot
         end
       end
 
+      # The first source whose pixels will not decode, or nil if they all will.
+      # For the write to ask once it has already failed, since a truncated source
+      # and a bad output format arrive there as the same exception.
+      #
+      # Fresh handles, not the ones already open: a :sequential source the failed
+      # render has already read cannot be read again, so reusing them would report
+      # a perfectly good file as broken.
+      def undecodable_path
+        @oriented.keys.find do |path|
+          # avg reads every pixel, which is the whole question being asked.
+          Vips::Image.new_from_file(path.to_s, access: :sequential, fail_on: FAIL_ON).avg
+          false
+        rescue Vips::Error
+          true
+        end
+      end
+
       private
+
+      # libvips says what went wrong but never which file it was reading, and a
+      # composition with a dozen sources needs the name for the answer to be
+      # worth anything.
+      def decoding(path)
+        yield
+      rescue Vips::Error => e
+        raise InvalidSource.new(path, e.message)
+      end
 
       # :sequential streams the source and holds a window of it; :random decodes
       # it whole. Random is the default: it is what a caller holding the image

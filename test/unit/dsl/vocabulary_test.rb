@@ -137,17 +137,28 @@ class VocabularyTest < Minitest::Test
     assert_equal 1, canvas.children.size
   end
 
-  # libvips validates its own enum and its message lists every valid mode, so
-  # duplicating that list here would only drift from the installed version.
-  def test_blend_is_left_to_libvips
-    error = assert_raises(Vips::Error) do
-      Loomy.generate(size: [20, 20]) do
-        layer solid: '#f00'
-        layer solid: '#0f0', blend: :bogus
-      end.write_to_memory
+  # libvips owns this vocabulary, so it is asked rather than copied: no list here
+  # to drift from the installed version, and its answer still names every mode.
+  #
+  # It has to be a DeclarationError. The render wraps whatever libvips raises, so
+  # leaving the mode unchecked reported the caller's typo as "libvips failed" --
+  # the exact 4xx-read-as-5xx this taxonomy exists to prevent.
+  def test_blend_is_asked_of_libvips
+    error = assert_raises(Loomy::InvalidValue) do
+      build { layer solid: '#0f0', blend: :bogus }
     end
 
-    assert_match(/VipsBlendMode/, error.message)
+    assert_equal :blend, error.property
+    assert_equal :bogus, error.value
+    assert_match(/soft-light/, error.message)
+  end
+
+  # Failing at declaration time, before any pixel work, is the point: the old
+  # behaviour surfaced only once the image was written.
+  def test_a_valid_blend_is_accepted
+    canvas = build { layer solid: '#0f0', blend: :multiply }
+
+    assert_equal 1, canvas.children.size
   end
 
   # The opposite case to blend: Loomy owns this vocabulary and maps it onto a

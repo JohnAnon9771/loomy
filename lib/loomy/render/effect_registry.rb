@@ -14,16 +14,20 @@ module Loomy
 
       def self.snapshot(loader) = new(Loomy.effects.dup, loader)
 
-      # Applies every effect in order. An effect with no registered processor is
-      # left alone rather than raising: registration is open, and an unknown
-      # effect is a missing feature, not a corrupt image.
+      # Applies every effect in order. An effect with no registered processor
+      # raises rather than being skipped: skipping returns an image the
+      # declaration did not ask for with nothing saying so. Lookup is by exact
+      # class, so a subclass of a registered effect raises too -- inheriting the
+      # parent's processor would read the subclass' parameters as the parent's.
       #
       # The loader is handed to the processor so an effect that reads a map from
       # disk goes through the same cache as everything else.
       def apply(image, effects)
         effects.inject(image) do |current, effect|
           processor = @processors[effect.class]
-          processor ? processor.call(current, effect, @loader) : current
+          raise UnknownEffect.new(effect.class, @processors.keys) unless processor
+
+          processor.call(current, effect, @loader)
         end
       end
     end

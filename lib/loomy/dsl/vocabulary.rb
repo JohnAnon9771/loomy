@@ -12,11 +12,13 @@ module Loomy
     # closed lists, VALIDATORS the properties that accept a union no list can
     # spell (`width: 20`, `width: '50%'`, `width: :fill`).
     #
-    # `blend:` is deliberately absent. libvips validates its own enum and its
-    # error already lists every valid mode, so a copy here would only drift
-    # away from whichever libvips is installed. `relight`'s `type:` is the
-    # opposite case and is checked here: Loomy owns that vocabulary and maps it
-    # onto a blend mode, so nothing downstream can name the valid values.
+    # `blend:` has no list here either, but it is still checked: libvips is
+    # *asked* rather than copied. A copy would drift away from whichever libvips
+    # is installed, and leaving it unchecked was worse -- the render wraps what
+    # libvips raises, so an invalid mode arrived as "libvips failed" when it is
+    # the declaration that is wrong. `relight`'s `type:` is the opposite case:
+    # Loomy owns that vocabulary and maps it onto a blend mode, so nothing
+    # downstream can name the valid values.
     module Vocabulary
       # Each axis names the same three positions differently, and the two
       # vocabularies do not mix.
@@ -64,6 +66,10 @@ module Loomy
         height: DIMENSION
       }.freeze
 
+      # Blend modes libvips has already accepted, so it is asked once per mode
+      # per process rather than once per declaration.
+      PROVEN_BLENDS = Set.new
+
       # An anchor is a compound like :bottom_right: at most one word from each
       # axis, in either order, and either half may be left out.
       ANCHOR_EXPECTED = [
@@ -82,6 +88,7 @@ module Loomy
 
         validate_anchor!(properties[:anchor], node_kind)
         validate_gradient!(properties[:gradient], node_kind)
+        validate_blend!(properties[:blend], node_kind)
       end
 
       # A closed set: the value has to be one of the listed ones.
@@ -118,6 +125,36 @@ module Loomy
         return if GRADIENT_DIRECTIONS.include?(gradient[:direction])
 
         raise InvalidValue.new(:'gradient[:direction]', gradient[:direction], GRADIENT_DIRECTIONS, node_kind)
+      end
+
+      # The one property whose vocabulary belongs to libvips, so libvips decides.
+      # A one-pixel composite is the question: ruby-vips converts the mode to the
+      # enum before any pixel work, so a wrong one is refused there and a right one
+      # costs 0.1ms, once per mode per process.
+      #
+      # Asked per mode rather than harvesting the whole list from one deliberate
+      # failure. Harvesting reads better, but a reworded message would come back as
+      # an empty list and reject *every* blend; this way it only degrades the
+      # sentence in the error.
+      def validate_blend!(blend, node_kind)
+        return if blend.nil? || PROVEN_BLENDS.include?(blend)
+
+        probe = Vips::Image.black(1, 1)
+        probe.composite2(probe, blend)
+        PROVEN_BLENDS << blend
+      rescue Vips::Error => e
+        raise InvalidValue.new(:blend, blend, blend_expected(e.message), node_kind)
+      end
+
+      # libvips lists every mode it would have taken, which is a better answer
+      # than a copy of the list kept here. Quoted from its message, so fall back
+      # to naming the source of truth if it ever stops saying it.
+      def blend_expected(message)
+        listed = message.split('should be one of:').last
+
+        return 'a blend mode the installed libvips supports' if listed.nil? || listed == message
+
+        listed.strip.chomp('.')
       end
 
       # Effects are built straight from DSL::Effects rather than through a

@@ -59,7 +59,7 @@ module Loomy
         when :solid then Sources::Solid.new(node.solid, frame.width, frame.height).call
         when :gradient then Sources::Gradient.new(node.gradient, frame.width, frame.height).call
         when :text then Sources::Text.new(node, width: text_wrap_width(node)).call
-        else raise LayoutError, "Layer has no renderable source: #{node.properties.inspect}"
+        else raise InternalError, "Layer has no renderable source: #{node.properties.inspect}"
         end
       end
 
