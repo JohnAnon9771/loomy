@@ -62,8 +62,7 @@ module TestHelper
     actual = actual_image.is_a?(String) ? Vips::Image.new_from_file(actual_image) : actual_image
 
     if TestHelper.baseline_mode?
-      FileUtils.mkdir_p(File.dirname(expected_path))
-      actual.write_to_file(expected_path)
+      rewrite_reference(expected_path, actual)
       return
     end
 
@@ -90,6 +89,42 @@ module TestHelper
            "Running libvips #{TestHelper.libvips_version}; references were rendered with " \
            "#{TestHelper::REFERENCE_LIBVIPS}. A small difference on a different libvips is usually the build, " \
            'not a regression -- confirm on the reference version before re-baselining.'
+  end
+
+  private
+
+  # PNG encoding is not byte-stable, so rewriting a golden whose pixels have not
+  # moved still leaves a modified file behind. A baseline run then reports every
+  # reference as changed and buries the one that really moved, which is exactly
+  # the diff the developer is being asked to review. Leave untouched goldens
+  # untouched so `git status test/assets/references` names only the real change.
+  #
+  # The candidate is encoded first and compared from disk: renders are float and
+  # goldens are 8-bit PNG, so comparing the in-memory image against its own
+  # reference reports the quantisation of the write as a difference. What decides
+  # the rewrite is whether the committed pixels would change.
+  def rewrite_reference(path, actual)
+    FileUtils.mkdir_p(File.dirname(path))
+    return actual.write_to_file(path) unless File.exist?(path)
+
+    candidate = tmp_path("baseline-#{File.basename(path)}")
+    actual.write_to_file(candidate)
+
+    if identical_pixels?(Vips::Image.new_from_file(path), Vips::Image.new_from_file(candidate))
+      FileUtils.rm_f(candidate)
+    else
+      FileUtils.mv(candidate, path)
+    end
+  end
+
+  # Exact identity, not the assertion tolerance: a golden is the pixels it
+  # records, so anything that moves at all is a change worth writing out.
+  def identical_pixels?(expected, actual)
+    return false unless expected.width == actual.width &&
+                        expected.height == actual.height &&
+                        expected.bands == actual.bands
+
+    (expected.cast(:float) - actual.cast(:float)).abs.max.zero?
   end
 end
 
