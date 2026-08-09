@@ -22,7 +22,7 @@ module Loomy
       # Fits that produce exactly the declared box. :contain is the default and
       # derives the box from the aspect ratio instead, so writing it out has to
       # mean the same as leaving it off.
-      EXACT_FITS = %i[cover fill].freeze
+      EXACT_FITS = %i[cover stretch].freeze
 
       def initialize(sources)
         @sources = sources

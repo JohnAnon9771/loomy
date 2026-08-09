@@ -19,7 +19,7 @@ module Loomy
       ALIGN  = Layout::Placement::HORIZONTAL.keys.freeze
       VALIGN = Layout::Placement::VERTICAL.keys.freeze
 
-      FIT = %i[contain cover fill].freeze
+      FIT = %i[contain cover stretch].freeze
 
       VALUES = {
         align: ALIGN,
