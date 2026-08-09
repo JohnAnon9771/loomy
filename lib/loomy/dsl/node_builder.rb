@@ -29,11 +29,11 @@ module Loomy
         end
       end
 
-      # The loader is positional and leading on purpose: both DSL forms pass
+      # `sources` is positional and leading on purpose: both DSL forms pass
       # their properties as keywords, which Ruby collapses into the trailing
       # positional hash. A keyword parameter here would capture them instead.
-      def initialize(loader, properties = {})
-        @loader = loader
+      def initialize(sources, properties = {})
+        @sources = sources
         @properties = properties.dup
         @children = []
         @effects = []
@@ -66,7 +66,7 @@ module Loomy
       # Read by Container, which hands it to every child builder it creates and
       # measures with it in bounds_of. Private, so it stays out of dsl_methods
       # and cannot be called from a DSL block.
-      attr_reader :loader
+      attr_reader :sources
 
       def node_class
         raise NotImplementedError, "#{self.class} must define #node_class"

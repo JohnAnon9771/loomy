@@ -13,8 +13,9 @@ module Loomy
     # the tree.
     #
     # Measuring needs intrinsic sizes, so it reads image headers -- cheap,
-    # libvips does not decode pixels for that -- through the same SourceLoader
-    # the renderer later pulls pixels from.
+    # libvips does not decode pixels for that -- through the same SourceCache
+    # `bounds_of` measured against and the renderer later loads from. It asks
+    # for sizes and trim bounds and nothing else; no pixel reaches this pass.
     class Engine
       PERCENTAGE = /\A(-?\d+(?:\.\d+)?)%\z/
 
@@ -23,8 +24,8 @@ module Loomy
       # mean the same as leaving it off.
       EXACT_FITS = %i[cover fill].freeze
 
-      def initialize(loader)
-        @loader = loader
+      def initialize(sources)
+        @sources = sources
         @frames = {}
       end
 
@@ -82,10 +83,10 @@ module Loomy
       end
 
       def file_intrinsic(node)
-        return @loader.dimensions(node.source) unless node.trim
+        return @sources.dimensions(node.source) unless node.trim
 
-        _left, _top, trim_width, trim_height = @loader.trim_bounds(node.source)
-        return @loader.dimensions(node.source) unless trim_width.positive? && trim_height.positive?
+        _left, _top, trim_width, trim_height = @sources.trim_bounds(node.source)
+        return @sources.dimensions(node.source) unless trim_width.positive? && trim_height.positive?
 
         [trim_width, trim_height]
       end

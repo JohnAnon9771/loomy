@@ -99,18 +99,18 @@ class SmartDSLTest < Minitest::Test
     assert_equal 1, stack.children.size
   end
 
-  # bounds_of has to answer from the loader the render will use, or it reports a
-  # frame the renderer never produces. Nesting the call in a group also pins
-  # that the loader reaches child builders, not just the canvas.
-  def test_bounds_of_measures_through_the_injected_loader
-    loader = StubLoader.new([7, 8, 9, 10])
+  # bounds_of has to answer from the cache the render will measure against, or
+  # it reports a frame the renderer never produces. Nesting the call in a group
+  # also pins that the cache reaches child builders, not just the canvas.
+  def test_bounds_of_measures_through_the_injected_cache
+    sources = StubSources.new([7, 8, 9, 10])
     result = nil
 
-    Loomy::DSL::PipelineBuilder.new(loader, {}) do
+    Loomy::DSL::PipelineBuilder.new(sources, {}) do
       group { result = bounds_of 'irrelevant.png' }
     end.build
 
-    assert_equal ['irrelevant.png'], loader.trimmed
+    assert_equal ['irrelevant.png'], sources.trimmed
     assert_equal [7, 8, 9, 10], [result.x, result.y, result.width, result.height]
   end
 
@@ -118,7 +118,7 @@ class SmartDSLTest < Minitest::Test
 
   # Answers from a script, so a bounds_of that opened the file itself would
   # return the file's real bounds and fail the assertion.
-  class StubLoader
+  class StubSources
     attr_reader :trimmed
 
     def initialize(bounds)
@@ -133,6 +133,6 @@ class SmartDSLTest < Minitest::Test
   end
 
   def build_canvas(&)
-    Loomy::DSL::PipelineBuilder.new(Loomy::Render::SourceLoader.new, { size: [100, 100] }, &).build
+    Loomy::DSL::PipelineBuilder.new(Loomy::Render::SourceCache.new, { size: [100, 100] }, &).build
   end
 end

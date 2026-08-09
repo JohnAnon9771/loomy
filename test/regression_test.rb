@@ -38,15 +38,16 @@ class RegressionTest < Minitest::Test
 
   # A layer nested in a group must still be loaded at its target size.
   def test_nested_layers_are_loaded_at_their_final_size
-    loader = RecordingLoader.new(Loomy::Render::SourceLoader.new)
+    sources = Loomy::Render::SourceCache.new
+    loader = RecordingLoader.new(Loomy::Render::SourceLoader.new(sources))
 
-    canvas = Loomy::DSL::PipelineBuilder.new(loader, { size: [1000, 1000] }) do
+    canvas = Loomy::DSL::PipelineBuilder.new(sources, { size: [1000, 1000] }) do
       group x: 100, y: 100, width: 400, height: 400 do
         layer LARGE, width: 200, height: 200
       end
     end.build
 
-    frames, size = Loomy::Layout::Engine.new(loader).call(canvas)
+    frames, size = Loomy::Layout::Engine.new(sources).call(canvas)
     Loomy::Render::Renderer.new(
       frames: frames, canvas_size: size, loader: loader,
       effects: Loomy::Render::EffectRegistry.snapshot(loader)
@@ -62,6 +63,7 @@ class RegressionTest < Minitest::Test
     assert_kind_of Class, Loomy::Bounds
     assert_kind_of Class, Loomy::Layout::Engine
     assert_kind_of Class, Loomy::Render::SourceLoader
+    assert_kind_of Class, Loomy::Render::SourceCache
     assert_kind_of Class, Loomy::Render::AccessPlan
   end
 
@@ -119,12 +121,12 @@ class RegressionTest < Minitest::Test
   # image did not fill.
   def test_layout_and_render_agree_on_an_exif_rotated_source
     rotated = 'test/assets/exif_rotated.jpg' # 200x100 of pixels, upright 100x200
-    loader = Loomy::Render::SourceLoader.new
+    sources = Loomy::Render::SourceCache.new
 
-    assert_equal [100, 200], loader.dimensions(rotated)
+    assert_equal [100, 200], sources.dimensions(rotated)
 
-    canvas = Loomy::DSL::PipelineBuilder.new(loader, {}) { layer rotated, width: 50 }.build
-    frames, = Loomy::Layout::Engine.new(loader).call(canvas)
+    canvas = Loomy::DSL::PipelineBuilder.new(sources, {}) { layer rotated, width: 50 }.build
+    frames, = Loomy::Layout::Engine.new(sources).call(canvas)
     frame = frames.values.first
     image = Loomy.generate { layer rotated, width: 50 }
 
@@ -184,14 +186,14 @@ class RegressionTest < Minitest::Test
   private
 
   def build_canvas(**options, &)
-    Loomy::DSL::PipelineBuilder.new(Loomy::Render::SourceLoader.new, options, &).build
+    Loomy::DSL::PipelineBuilder.new(Loomy::Render::SourceCache.new, options, &).build
   end
 
-  # A fresh loader per render: sharing one would serve the second render out of
-  # the first one's image cache, and the assertions here are about what the
+  # A fresh cache per render: sharing one would serve the second render out of
+  # the first one's measurements, and the assertions here are about what the
   # pipeline recomputes.
   def render(canvas)
-    Loomy::Render::Pipeline.new(canvas, Loomy::Render::SourceLoader.new).call
+    Loomy::Render::Pipeline.new(canvas, Loomy::Render::SourceCache.new).call
   end
 
   def snapshot(node)
@@ -221,9 +223,6 @@ class RegressionTest < Minitest::Test
       @loader.load_trimmed(path, target)
     end
 
-    def dimensions(path) = @loader.dimensions(path)
-    def trim_bounds(path) = @loader.trim_bounds(path)
     def load_map(path, target) = @loader.load_map(path, target)
-    def allow_streaming(paths) = @loader.allow_streaming(paths)
   end
 end

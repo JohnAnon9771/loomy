@@ -79,8 +79,8 @@ class AccessPlanTest < Minitest::Test
   private
 
   def streamable(&)
-    loader = Loomy::Render::SourceLoader.new
-    canvas = Loomy::DSL::PipelineBuilder.new(loader, { size: [200, 200] }, &).build
+    sources = Loomy::Render::SourceCache.new
+    canvas = Loomy::DSL::PipelineBuilder.new(sources, { size: [200, 200] }, &).build
 
     Loomy::Render::AccessPlan.streamable(Loomy::AST::Pruner.new(canvas).call)
   end

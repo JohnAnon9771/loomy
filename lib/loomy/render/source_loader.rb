@@ -2,26 +2,16 @@
 
 module Loomy
   module Render
-    # Opens image sources and caches them for the duration of one render.
+    # Produces the pixels of a source at the exact size layout settled on,
+    # described by a Target, and caches them for the duration of one render.
     #
-    # Layout asks it for dimensions and trim bounds while measuring; the
-    # renderer then asks for the pixels at the exact size layout settled on,
-    # described by a Target. `bounds_of` asks it for a trim earlier still, while
-    # the DSL block is being evaluated.
-    #
-    # A source is opened once and every one of those answers works from the same
-    # handle, which is what makes the access mode a property of the source
-    # rather than of the call -- see #allow_streaming.
+    # Measuring is not here: it lives in the SourceCache this composes, which
+    # answers `bounds_of` before a render exists at all.
     class SourceLoader
       # libvips needs a number for the axis the caller did not constrain. This
       # doubles as a ceiling: a source taller than this on the free axis gets
       # scaled down to fit it.
       NO_LIMIT = 10_000
-
-      TRIM_THRESHOLD = 10
-
-      # EXIF orientation 1 means "already upright".
-      UPRIGHT = 1
 
       SIZING = { contain: :both, cover: :both, stretch: :force }.freeze
 
@@ -31,34 +21,9 @@ module Loomy
       # choice is worth making per format. Both paths are pixel-identical.
       SHRINK_ON_LOAD = %w[jpegload webpload heifload jxlload pdfload svgload].freeze
 
-      def initialize
-        @oriented = {}
+      def initialize(sources)
+        @sources = sources
         @images = {}
-        @trims = {}
-        @streamable = Set.new
-      end
-
-      # Declares sources that will be read once, top to bottom, and so can be
-      # streamed instead of decoded whole.
-      #
-      # Opt-in, because getting it wrong is a hard error rather than a slow
-      # render: anything not named here keeps random access. Already-open
-      # sources are dropped, since a handle cannot change mode after the fact.
-      def allow_streaming(paths)
-        @streamable.merge(paths - @oriented.keys)
-      end
-
-      # Natural size, read from the header. libvips is lazy, so this does not
-      # decode pixels.
-      def dimensions(path)
-        image = oriented(path)
-        [image.width, image.height]
-      end
-
-      # Opaque extent of the image, as [left, top, width, height]. Needs a pixel
-      # scan, so the result is cached per render.
-      def trim_bounds(path)
-        @trims[path] ||= oriented(path).find_trim(threshold: TRIM_THRESHOLD)
       end
 
       def load(path, target = Target.natural)
@@ -70,7 +35,7 @@ module Loomy
       # and resizing after costs nothing extra and is exact.
       def load_trimmed(path, target = Target.natural)
         @images[[path, :trimmed, target]] ||= begin
-          left, top, width, height = trim_bounds(path)
+          left, top, width, height = @sources.trim_bounds(path)
           image = read(path, Target.natural)
           image = image.crop(left, top, width, height) if width.positive? && height.positive?
 
@@ -84,44 +49,13 @@ module Loomy
       # and the second drives y -- so the alpha band `load` adds to an opaque
       # source would be read as displacement data.
       def load_map(path, target)
-        @images[[path, :map, target]] ||= resize(oriented(path), target)
+        @images[[path, :map, target]] ||= resize(@sources.oriented(path), target)
       end
 
       private
 
-      # The one place a source is opened. Everything else works from what this
-      # returns, which is why the access mode has to be settled by now.
-      #
-      # An EXIF orientation tag is applied once, up front, so that measuring and
-      # rendering agree on how big the source is. libvips' thumbnail applies it
-      # on its own, so measuring the unrotated header while rendering rotated
-      # pixels left layout holding a frame the image did not fill -- a camera
-      # JPEG asked for 50x25 measured 50x25 and rendered 13x25.
-      #
-      # autorot strips the tag once applied, so the thumbnail below cannot
-      # rotate a second time. It is skipped outright for upright sources: it is
-      # a real pipeline stage even when it has nothing to do, and almost every
-      # image is upright.
-      def oriented(path)
-        @oriented[path] ||= begin
-          raise SourceNotFound, path unless File.readable?(path.to_s)
-
-          image = Vips::Image.new_from_file(path.to_s, access: access_for(path))
-          orientation(image) == UPRIGHT ? image : image.autorot
-        end
-      end
-
-      # :sequential streams the source and holds a window of it; :random decodes
-      # it whole. Random is the default: it is what a caller holding the image
-      # can read as many times as it likes.
-      def access_for(path) = @streamable.include?(path) ? :sequential : :random
-
-      def orientation(image)
-        image.get_typeof('orientation').zero? ? UPRIGHT : image.get('orientation')
-      end
-
       def read(path, target)
-        image = oriented(path)
+        image = @sources.oriented(path)
         return with_alpha(image) unless target.resize?(image)
 
         if shrink_on_load?(path)
@@ -144,11 +78,7 @@ module Loomy
         options
       end
 
-      def shrink_on_load?(path)
-        SHRINK_ON_LOAD.include?(oriented(path).get('vips-loader'))
-      rescue Vips::Error
-        false
-      end
+      def shrink_on_load?(path) = SHRINK_ON_LOAD.include?(@sources.loader_name(path))
 
       def with_alpha(image)
         image.has_alpha? ? image : image.bandjoin(255)

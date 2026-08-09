@@ -8,11 +8,7 @@ class SourceLoaderTest < Minitest::Test
   SINGLE_BAND_MAP = 'test/assets/disp_map.png' # 200x200, one band
 
   def setup
-    @loader = Loomy::Render::SourceLoader.new
-  end
-
-  def test_reads_dimensions_without_decoding
-    assert_equal [500, 500], @loader.dimensions(BASE)
+    @loader = Loomy::Render::SourceLoader.new(Loomy::Render::SourceCache.new)
   end
 
   def test_caches_by_path_and_target_size
@@ -33,24 +29,6 @@ class SourceLoaderTest < Minitest::Test
 
   def target(width, height, fit: :contain)
     Loomy::Render::Target.new(width: width, height: height, fit: fit)
-  end
-
-  def test_missing_source_raises_a_loomy_error
-    error = assert_raises(Loomy::SourceNotFound) { @loader.dimensions('test/assets/nope.png') }
-
-    assert_match(/nope\.png/, error.message)
-  end
-
-  def test_trim_bounds_are_the_opaque_extent
-    assert_equal [200, 200, 100, 100], @loader.trim_bounds(TRIMMABLE)
-  end
-
-  # find_trim is a full pixel scan. bounds_of and a `trim: true` layer on the
-  # same source must not pay for it twice.
-  def test_trim_bounds_are_scanned_once_per_path
-    first = @loader.trim_bounds(TRIMMABLE)
-
-    assert_same first, @loader.trim_bounds(TRIMMABLE)
   end
 
   def test_trimmed_load_crops_then_scales_to_the_target

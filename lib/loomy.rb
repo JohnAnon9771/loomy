@@ -29,9 +29,9 @@ module Loomy
     # Hands the image back lazily, so the caller decides when and how often to
     # read it. Every source therefore stays on random access.
     def generate(**options, &)
-      canvas, loader = compose(options, &)
+      canvas, sources = compose(options, &)
 
-      Render::Pipeline.new(canvas, loader).call
+      Render::Pipeline.new(canvas, sources).call
     end
 
     def render(output_path, **options, &)
@@ -62,14 +62,14 @@ module Loomy
 
     private
 
-    # One loader per render, built before the block is evaluated: `bounds_of`
-    # measures a source while the DSL is still running, and has to see the same
-    # orientation, threshold and cache the render will.
+    # One source cache per render, built before the block is evaluated:
+    # `bounds_of` measures a source while the DSL is still running, and has to
+    # see the same orientation, threshold and scan the render will.
     def compose(options, &)
-      loader = Render::SourceLoader.new
-      canvas = DSL::PipelineBuilder.new(loader, options, &).build
+      sources = Render::SourceCache.new
+      canvas = DSL::PipelineBuilder.new(sources, options, &).build
 
-      [AST::Pruner.new(canvas).call, loader]
+      [AST::Pruner.new(canvas).call, sources]
     end
 
     # The image is written once and dropped, so the sources the tree reads once
@@ -77,10 +77,10 @@ module Loomy
     # difference between this and `generate`, whose result the caller may read
     # any number of times.
     def single_pass(options, &)
-      canvas, loader = compose(options, &)
-      loader.allow_streaming(Render::AccessPlan.streamable(canvas))
+      canvas, sources = compose(options, &)
+      sources.allow_streaming(Render::AccessPlan.streamable(canvas))
 
-      Render::Pipeline.new(canvas, loader).call
+      Render::Pipeline.new(canvas, sources).call
     end
 
     def canvas_options(options)
