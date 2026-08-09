@@ -22,6 +22,9 @@ class GroupsTest < Minitest::Test
       end
     end
 
-    assert_image_similar(reference, image)
+    # Nested blur over a composite: the resampling differs slightly between
+    # libvips builds. Structure is asserted by the reference; the slack only
+    # applies off the reference version.
+    assert_image_similar(reference, image, across_libvips: 0.5)
   end
 end

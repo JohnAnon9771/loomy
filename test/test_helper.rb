@@ -24,6 +24,20 @@ module TestHelper
     of a normal test run.
   MSG
 
+  # Golden images are only exactly reproducible against the libvips build they
+  # were rendered with: resampling kernels and colourspace conversions change
+  # between releases. References here were produced on this version, so tests
+  # stay strict on it and may relax elsewhere -- see assert_image_similar.
+  REFERENCE_LIBVIPS = '8.18'
+
+  def self.libvips_version
+    "#{Vips.version(0)}.#{Vips.version(1)}"
+  end
+
+  def self.reference_libvips?
+    libvips_version == REFERENCE_LIBVIPS
+  end
+
   def self.baseline_mode?
     ENV['LOOMY_BASELINE'] == '1'
   end
@@ -39,7 +53,13 @@ module TestHelper
     File.join(TestHelper::TMP_DIR, name)
   end
 
-  def assert_image_similar(expected_path, actual_image, tolerance: 0.1)
+  # `across_libvips` is the tolerance to use when the running libvips is not the
+  # one the references were rendered with. Pass it only for the handful of
+  # operations that genuinely move between releases, and only where a
+  # version-independent assertion in the test itself carries the real weight --
+  # otherwise the golden stops meaning anything.
+  def assert_image_similar(expected_path, actual_image, tolerance: 0.1, across_libvips: nil)
+    tolerance = across_libvips if across_libvips && !TestHelper.reference_libvips?
     actual = actual_image.is_a?(String) ? Vips::Image.new_from_file(actual_image) : actual_image
 
     if TestHelper.baseline_mode?
@@ -67,7 +87,10 @@ module TestHelper
     diff = (expected.cast(:float) - actual.cast(:float)).abs.avg
 
     assert diff <= tolerance,
-           "Image similarity failed for #{expected_path}. Mean difference: #{diff} (tolerance: #{tolerance})"
+           "Image similarity failed for #{expected_path}. Mean difference: #{diff} (tolerance: #{tolerance}). " \
+           "Running libvips #{TestHelper.libvips_version}; references were rendered with " \
+           "#{TestHelper::REFERENCE_LIBVIPS}. A small difference on a different libvips is usually the build, " \
+           'not a regression -- confirm on the reference version before re-baselining.'
   end
 end
 
