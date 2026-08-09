@@ -95,6 +95,60 @@ class LayoutEngineTest < Minitest::Test
     assert_equal [300, 50], [frame.width, frame.height]
   end
 
+  # :fill is relative to the parent exactly as a percentage is, and an auto-sized
+  # canvas has no box to be relative to. A solid has no natural size either, so
+  # it used to measure 1px and render a sliver; a file quietly came out at its
+  # own size, which is not the size anyone asked for.
+  def test_fill_with_no_resolvable_parent_raises
+    assert_raises(Loomy::LayoutError) { layout { layer solid: '#f00', width: :fill, height: 50 } }
+    assert_raises(Loomy::LayoutError) { layout { layer SQUARE, width: :fill } }
+  end
+
+  def test_fill_on_a_container_with_no_resolvable_parent_raises
+    assert_raises(Loomy::LayoutError) { layout { group(width: :fill) { layer SQUARE } } }
+  end
+
+  # Only layers ever interpreted the sentinel. A container passed it straight
+  # through as the box its children measured against, which blew up coercing a
+  # Symbol to Integer.
+  def test_fill_on_a_group_takes_the_parent_box
+    frames, = layout(size: [300, 200]) do
+      group width: :fill, height: :fill do
+        layer SQUARE, width: 20, height: 20, align: :right
+      end
+    end
+
+    group_frame = frames.find { |node, _| node.is_a?(Loomy::AST::Group) }.last
+
+    assert_equal [300, 200], [group_frame.width, group_frame.height]
+    assert_equal 280, layer_frames(frames).first.x
+  end
+
+  def test_fill_on_a_stack_takes_the_parent_box
+    frames, = layout(size: [300, 200]) do
+      vstack width: :fill do
+        layer solid: '#f00', width: :fill, height: 20
+      end
+    end
+
+    frame = layer_frames(frames).first
+
+    assert_equal [300, 20], [frame.width, frame.height]
+  end
+
+  # A filled container has to hand its children a box they can measure against,
+  # not the raw sentinel: this used to reach the percentage arithmetic as a
+  # Symbol and raise NoMethodError.
+  def test_percentage_inside_a_filled_group_uses_the_filled_box
+    frames, = layout(size: [400, 200]) do
+      group width: :fill do
+        layer SQUARE, width: '50%'
+      end
+    end
+
+    assert_equal 200, layer_frames(frames).first.width
+  end
+
   def test_trimmed_layers_measure_at_their_opaque_extent
     frames, size = layout { layer 'test/assets/trim_test_source.png', trim: true }
 

@@ -59,8 +59,13 @@ module Loomy
         arrange_stack(node, inner_box(node, box))
       end
 
+      # An undeclared axis takes the parent's box, and so does one declared
+      # :fill -- only layers care about the difference, and `declared` has
+      # already refused the case where there is no parent box to take.
       def inner_box(node, box)
-        [declared(node, :width, box[0]) || box[0], declared(node, :height, box[1]) || box[1]]
+        declarations = [declared(node, :width, box[0]), declared(node, :height, box[1])]
+
+        declarations.zip(box).map { |value, length| value == :fill ? length : value || length }
       end
 
       def measure_layer(node, box)
@@ -218,16 +223,18 @@ module Loomy
       # ---- declared geometry ------------------------------------------------
 
       # Resolves a declared dimension against the parent box. Percentages become
-      # pixels; :fill and nil pass through for the caller to interpret.
+      # pixels; :fill stays the symbol it arrived as, because a layer measures
+      # differently for having been asked to fill and only the caller knows what
+      # to do with that. Both are relative to the parent, so neither means
+      # anything without one -- and saying so beats measuring against nothing.
       def declared(node, axis, box_length)
         value = node.public_send(axis)
-        return value unless value.is_a?(String)
+        percentage = value.is_a?(String) ? PERCENTAGE.match(value) : nil
+        return value unless percentage || value == :fill
 
-        match = PERCENTAGE.match(value)
-        return value unless match
         raise LayoutError, "Cannot resolve #{value.inspect}: the parent has no resolvable #{axis}" if box_length.nil?
 
-        (box_length * (match[1].to_f / 100.0)).round
+        percentage ? (box_length * (percentage[1].to_f / 100.0)).round : value
       end
 
       def numeric(value) = value.is_a?(Numeric) ? value : nil
