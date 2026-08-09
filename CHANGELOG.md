@@ -20,7 +20,14 @@ Restructure of the rendering pipeline. The public API — `Loomy.render`,
   `:end` and `:space_between`. The old AST described `valign` as main-axis
   distribution in a comment, but nothing ever implemented it.
 - `Loomy::Error` hierarchy that is actually raised: `SourceNotFound`,
-  `InvalidColor`, `UnknownStyle`, `UnknownProperty`, `LayoutError`.
+  `InvalidColor`, `UnknownStyle`, `UnknownProperty`, `InvalidValue`,
+  `LayoutError`.
+- Values are checked against their vocabulary, not just property names.
+  `align: :top`, `valign: :left`, `fit: :squish`, `trim: :yes`,
+  `distribute: :around`, `stack(:sideways)`, a misspelled `anchor:` half and an
+  unknown gradient `direction:` were all accepted and quietly ignored; each now
+  raises `InvalidValue` naming what was expected. `blend:` is left to libvips,
+  which validates its own enum and already lists the valid modes.
 - `AST::Effect#no_op?`, so custom effects take part in pruning. Pruning used to
   dispatch through one hardcoded visitor method per built-in effect.
 - `rake test:baseline` for regenerating golden references deliberately.
@@ -56,6 +63,10 @@ Restructure of the rendering pipeline. The public API — `Loomy.render`,
   `Loomy::CANVAS_OPTIONS`.
 - `Loomy::DSL::CanvasBuilder` and `Loomy::Bounds` were defined in
   `dsl/pipeline_builder.rb`, where Zeitwerk could not autoload them.
+- `fit: :contain`, the explicit spelling of the default, did not behave like the
+  default: it took the "be exactly this box" path, so a layer's frame could
+  claim 200x200 while the image was 175x200 and anything aligned against it
+  landed off-centre.
 - `bench.rb` passed `blur:`/`grayscale:` as keyword arguments, so its
   "with effects" scenario applied no effects. The performance figures in the
   README have been remeasured.

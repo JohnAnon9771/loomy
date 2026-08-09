@@ -40,7 +40,12 @@ module Loomy
         self
       end
 
+      # Both forms of the DSL funnel through here -- keyword arguments went into
+      # @properties at construction, block calls wrote to it since -- so it is
+      # the one place that sees every value a node was given.
       def build
+        Vocabulary.validate!(@properties, self.class.dsl_name)
+
         node_class.new(@properties, @children, @effects)
       end
 

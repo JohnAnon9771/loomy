@@ -18,6 +18,11 @@ module Loomy
     class Engine
       PERCENTAGE = /\A(-?\d+(?:\.\d+)?)%\z/
 
+      # Fits that produce exactly the declared box. :contain is the default and
+      # derives the box from the aspect ratio instead, so writing it out has to
+      # mean the same as leaving it off.
+      EXACT_FITS = %i[cover fill].freeze
+
       def initialize(loader)
         @loader = loader
         @frames = {}
@@ -99,9 +104,9 @@ module Loomy
 
         return intrinsic if target_width.nil? && target_height.nil?
 
-        # :fill and the explicit fits all mean "be exactly this", so aspect
-        # ratio does not survive them. Only the default contain preserves it.
-        return [target_width || intrinsic[0], target_height || intrinsic[1]] if filling || fit
+        # `width: :fill` and the exact fits all mean "be precisely this box", so
+        # aspect ratio does not survive them.
+        return [target_width || intrinsic[0], target_height || intrinsic[1]] if filling || EXACT_FITS.include?(fit)
 
         contain(intrinsic, target_width, target_height)
       end

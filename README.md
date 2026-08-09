@@ -208,6 +208,19 @@ Reproduce them yourself — the benchmark is in the repository, and the numbers 
 - `Loomy.styles` and `Loomy.effects` are process-global; registration is not
   thread-safe, so register at boot rather than per-request.
 
+## 🚨 Errors
+
+Everything Loomy raises descends from `Loomy::Error`, so one rescue covers it. Both halves of a declaration are checked: the property name, and its value.
+
+```ruby
+layer "art.png" do
+  aling :center   # Loomy::UnknownProperty — no such property (lists what is available)
+  align :top      # Loomy::InvalidValue    — :top belongs to the vertical axis
+end
+```
+
+`align`, `valign`, `anchor`, `fit`, `trim`, `distribute`, a stack's `direction` and a gradient's `direction` all have closed vocabularies and say what they expected. `blend:` is left to libvips, which validates its own enum and lists the valid modes in its message.
+
 ## 🧪 Development
 
 ```bash

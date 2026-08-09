@@ -50,6 +50,26 @@ module Loomy
     end
   end
 
+  # A property was given a value outside its vocabulary -- e.g. `align: :top`,
+  # where :top belongs to the vertical axis.
+  class InvalidValue < Error
+    attr_reader :property, :value
+
+    # `allowed` is either the list of accepted values or, where the accepted set
+    # is not a flat list, a sentence describing it.
+    def initialize(property, value, allowed, node_kind = nil)
+      @property = property
+      @value = value
+      where = node_kind ? " on #{node_kind}" : ''
+      expected = allowed.is_a?(String) ? allowed : allowed.map(&:inspect).join(', ')
+
+      super(<<~MESSAGE.strip)
+        Invalid value for `#{property}`#{where}: #{value.inspect}
+        Expected: #{expected}
+      MESSAGE
+    end
+  end
+
   # Geometry could not be resolved -- e.g. a percentage against a box with no
   # resolvable size.
   class LayoutError < Error; end

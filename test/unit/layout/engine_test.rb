@@ -69,6 +69,16 @@ class LayoutEngineTest < Minitest::Test
     assert_equal [175, 200], [frame.width, frame.height] # 4200x4800 into 200x200
   end
 
+  # Spelling out the default has to mean the same as leaving it off. It used to
+  # take the "be exactly this box" branch, so the frame said 200x200 while the
+  # image was 175x200 and anything aligned against it landed 12px off.
+  def test_explicit_contain_matches_the_default
+    default, = layout(size: [500, 500]) { layer TALL, width: 200, height: 200, align: :center }
+    explicit, = layout(size: [500, 500]) { layer TALL, width: 200, height: 200, fit: :contain, align: :center }
+
+    assert_equal frame_values(default), frame_values(explicit)
+  end
+
   def test_cover_fit_fills_the_requested_box
     frames, = layout(size: [500, 500]) { layer TALL, width: 200, height: 200, fit: :cover }
 
@@ -187,6 +197,10 @@ class LayoutEngineTest < Minitest::Test
 
   def layer_frames(frames)
     frames.filter_map { |node, frame| frame if node.is_a?(Loomy::AST::Layer) }
+  end
+
+  def frame_values(frames)
+    frames.values.map { |frame| [frame.x, frame.y, frame.width, frame.height] }
   end
 
   def assert_frame(expected, frame)
