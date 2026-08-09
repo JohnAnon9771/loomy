@@ -162,8 +162,21 @@ class Vignette < Loomy::AST::Effect
   def no_op? = strength.zero?
 end
 
-Loomy.register_effect(Vignette, ->(image, effect) {
+Loomy.register_effect(Vignette, ->(image, effect, loader) {
   image.my_vips_operation(effect.strength)
+})
+```
+
+The third argument is the render's source loader. An effect that reads a file
+from disk — a displacement or lighting map, say — should ask it rather than
+opening the file itself, so the read is cached for the render and any
+orientation tag is applied:
+
+```ruby
+Loomy.register_effect(Overlay, ->(image, effect, loader) {
+  target = Loomy::Render::Target.new(width: image.width, height: image.height, fit: :cover)
+
+  image.composite(loader.load_map(effect.map, target), :over)
 })
 ```
 
@@ -191,6 +204,20 @@ Reproduce them yourself — the benchmark is in the repository, and the numbers 
 | Trim a 2000px source to its 500px of content  | 6.6 img/s  |
 
 > An earlier version of this table reported "~70 img/s simple" and "~60 img/s complex (5+ layers + effects)". The benchmark behind those numbers passed `blur:` and `grayscale:` as keyword arguments, which are not how effects are declared — they landed in the property hash and were ignored, so the "with effects" figure was measured with no effects applied.
+
+**Peak memory**
+
+`render` and `to_blob` write the image once and drop it, so a source the tree
+reads exactly once can be streamed rather than decoded whole. Two layers over a
+4200×4800 source grow RSS by **+69 MB** across five renders in one process,
+against **+142 MB** for the same image built with `generate` and written by
+hand. It costs nothing in throughput, which is why the table above cannot see
+it — `bundle exec ruby bench.rb` reports both.
+
+A source keeps random access when it is read more than once — behind two layers,
+or behind a layer and an effect map — or when it carries `trim:` or sits under a
+`displace`. `generate` hands the image back for you to read whenever and however
+often you like, so it streams nothing.
 
 ## 🗺 Roadmap
 

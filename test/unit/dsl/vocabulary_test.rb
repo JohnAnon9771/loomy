@@ -97,6 +97,6 @@ class VocabularyTest < Minitest::Test
   private
 
   def build(&)
-    Loomy::DSL::PipelineBuilder.new({ size: [100, 100] }, &).build
+    Loomy::DSL::PipelineBuilder.new(Loomy::Render::SourceCache.new, { size: [100, 100] }, &).build
   end
 end
