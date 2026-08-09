@@ -189,10 +189,11 @@ class LayoutEngineTest < Minitest::Test
   private
 
   def layout(**options, &)
-    canvas = Loomy::DSL::PipelineBuilder.new(options, &).build
+    loader = Loomy::Render::SourceLoader.new
+    canvas = Loomy::DSL::PipelineBuilder.new(loader, options, &).build
     canvas = Loomy::AST::Pruner.new(canvas).call
 
-    Loomy::Layout::Engine.new(Loomy::Render::SourceLoader.new).call(canvas)
+    Loomy::Layout::Engine.new(loader).call(canvas)
   end
 
   def layer_frames(frames)

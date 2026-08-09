@@ -26,10 +26,15 @@ module Loomy
   loader.setup
 
   class << self
+    # One loader per render, built before the block is evaluated: `bounds_of`
+    # measures a source while the DSL is still running, and has to see the same
+    # orientation, threshold and cache the render will.
     def generate(**options, &)
-      canvas = DSL::PipelineBuilder.new(options, &).build
+      loader = Render::SourceLoader.new
+      canvas = DSL::PipelineBuilder.new(loader, options, &).build
       canvas = AST::Pruner.new(canvas).call
-      Render::Pipeline.new(canvas).call
+
+      Render::Pipeline.new(canvas, loader).call
     end
 
     def render(output_path, **options, &)

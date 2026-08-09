@@ -4,18 +4,18 @@ module Loomy
   module Render
     # Runs one render: lay the tree out, then paint it.
     class Pipeline
-      def initialize(canvas)
+      def initialize(canvas, loader)
         @canvas = canvas
+        @loader = loader
       end
 
       def call
-        loader = SourceLoader.new
-        frames, canvas_size = Layout::Engine.new(loader).call(@canvas)
+        frames, canvas_size = Layout::Engine.new(@loader).call(@canvas)
 
         Renderer.new(
           frames: frames,
           canvas_size: canvas_size,
-          loader: loader,
+          loader: @loader,
           effects: EffectRegistry.snapshot
         ).call(@canvas)
       end

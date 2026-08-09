@@ -44,6 +44,14 @@ class SourceLoaderTest < Minitest::Test
     assert_equal [200, 200, 100, 100], @loader.trim_bounds(TRIMMABLE)
   end
 
+  # find_trim is a full pixel scan. bounds_of and a `trim: true` layer on the
+  # same source must not pay for it twice.
+  def test_trim_bounds_are_scanned_once_per_path
+    first = @loader.trim_bounds(TRIMMABLE)
+
+    assert_same first, @loader.trim_bounds(TRIMMABLE)
+  end
+
   def test_trimmed_load_crops_then_scales_to_the_target
     # Cropping at full resolution and scaling after gives the exact target.
     image = @loader.load_trimmed(TRIMMABLE, target(50, 50))

@@ -5,14 +5,15 @@ module Loomy
     # Entry point for the DSL: turns the options and block given to
     # Loomy.render / Loomy.generate into a canvas.
     class PipelineBuilder
-      def initialize(options, &block)
+      def initialize(loader, options, &block)
+        @loader = loader
         @options = options
         @block = block
       end
 
       def build
         CanvasBuilder
-          .new(size: @options[:size], dpi: @options[:dpi])
+          .new(@loader, size: @options[:size], dpi: @options[:dpi])
           .evaluate(&@block)
           .build
       end

@@ -9,29 +9,29 @@ class RegressionTest < Minitest::Test
 
   # Rendering reads the tree; it must never write to it.
   def test_rendering_does_not_mutate_the_tree
-    canvas = Loomy::DSL::PipelineBuilder.new({ size: [300, 300] }) do
+    canvas = build_canvas(size: [300, 300]) do
       vstack spacing: 10, align: :center do
         layer SOURCE, width: 50, height: 50
         layer SOURCE, width: 50, height: 50
       end
-    end.build
+    end
 
     before = snapshot(canvas)
-    2.times { Loomy::Render::Pipeline.new(canvas).call }
+    2.times { render(canvas) }
 
     assert_equal before, snapshot(canvas)
   end
 
   def test_the_same_tree_renders_identically_twice
-    canvas = Loomy::DSL::PipelineBuilder.new({ size: [200, 200] }) do
+    canvas = build_canvas(size: [200, 200]) do
       vstack spacing: 5 do
         layer SOURCE, width: 40, height: 40
         layer SOURCE, width: 40, height: 40
       end
-    end.build
+    end
 
-    first = Loomy::Render::Pipeline.new(canvas).call.write_to_memory
-    second = Loomy::Render::Pipeline.new(canvas).call.write_to_memory
+    first = render(canvas).write_to_memory
+    second = render(canvas).write_to_memory
 
     assert_equal first, second
   end
@@ -40,7 +40,7 @@ class RegressionTest < Minitest::Test
   def test_nested_layers_are_loaded_at_their_final_size
     loader = RecordingLoader.new(Loomy::Render::SourceLoader.new)
 
-    canvas = Loomy::DSL::PipelineBuilder.new({ size: [1000, 1000] }) do
+    canvas = Loomy::DSL::PipelineBuilder.new(loader, { size: [1000, 1000] }) do
       group x: 100, y: 100, width: 400, height: 400 do
         layer LARGE, width: 200, height: 200
       end
@@ -84,13 +84,30 @@ class RegressionTest < Minitest::Test
 
     assert_equal [100, 200], loader.dimensions(rotated)
 
-    canvas = Loomy::DSL::PipelineBuilder.new({}) { layer rotated, width: 50 }.build
+    canvas = Loomy::DSL::PipelineBuilder.new(loader, {}) { layer rotated, width: 50 }.build
     frames, = Loomy::Layout::Engine.new(loader).call(canvas)
     frame = frames.values.first
     image = Loomy.generate { layer rotated, width: 50 }
 
     assert_equal [frame.width, frame.height], [image.width, image.height]
     assert_equal [50, 100], [image.width, image.height]
+  end
+
+  # bounds_of used to open the file itself, so it reported the frame the file is
+  # stored in while everything else measured the upright one: 200x100 against
+  # 100x200. Positioning against it landed in a coordinate space that was never
+  # rendered.
+  def test_bounds_of_agrees_with_the_rendered_frame_on_an_exif_rotated_source
+    rotated = 'test/assets/exif_rotated.jpg' # 200x100 of pixels, upright 100x200
+    bounds = nil
+
+    image = Loomy.generate do
+      bounds = bounds_of rotated
+      layer rotated
+    end
+
+    assert_equal [100, 200], [bounds.width, bounds.height]
+    assert_equal [image.width, image.height], [bounds.width, bounds.height]
   end
 
   def test_to_blob_keeps_dpi
@@ -126,6 +143,17 @@ class RegressionTest < Minitest::Test
   end
 
   private
+
+  def build_canvas(**options, &)
+    Loomy::DSL::PipelineBuilder.new(Loomy::Render::SourceLoader.new, options, &).build
+  end
+
+  # A fresh loader per render: sharing one would serve the second render out of
+  # the first one's image cache, and the assertions here are about what the
+  # pipeline recomputes.
+  def render(canvas)
+    Loomy::Render::Pipeline.new(canvas, Loomy::Render::SourceLoader.new).call
+  end
 
   def snapshot(node)
     {

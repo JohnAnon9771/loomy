@@ -57,6 +57,6 @@ class StyleTest < Minitest::Test
   private
 
   def build_canvas(&)
-    Loomy::DSL::PipelineBuilder.new({ size: [100, 100] }, &).build
+    Loomy::DSL::PipelineBuilder.new(Loomy::Render::SourceLoader.new, { size: [100, 100] }, &).build
   end
 end
