@@ -35,7 +35,9 @@ Restructure of the rendering pipeline. The public API — `Loomy.render`,
   parent box and the mistake looked like it had worked.
 - `AST::Effect#no_op?`, so custom effects take part in pruning. Pruning used to
   dispatch through one hardcoded visitor method per built-in effect.
-- `rake test:baseline` for regenerating golden references deliberately.
+- `rake test:baseline` for regenerating golden references deliberately. A
+  golden whose pixels have not moved is left on disk rather than re-encoded, so
+  the diff to review names only the references that really changed.
 - RubyCritic code-smell analysis (`rake critic`, `rake critic:console`), wired
   into CI behind a score floor. `.reek.yml` disables the detectors that only
   fire on this codebase's shape and documents why; the rest stay on.

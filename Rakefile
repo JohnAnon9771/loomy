@@ -13,7 +13,8 @@ namespace :test do
   desc 'Regenerate the golden reference images (review the PNGs before committing)'
   task :baseline do
     warn "\e[33m!! Baseline mode: golden references in test/assets/references will be OVERWRITTEN.\e[0m"
-    warn "\e[33m!! Inspect `git diff --stat test/assets/references` and the PNGs before committing.\e[0m"
+    warn "\e[33m!! Goldens whose pixels did not move are left alone, so `git status --short\e[0m"
+    warn "\e[33m!! test/assets/references` lists only real changes. Inspect those PNGs before committing.\e[0m"
     warn ''
 
     ENV['LOOMY_BASELINE'] = '1'
