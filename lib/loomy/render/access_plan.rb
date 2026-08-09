@@ -22,6 +22,14 @@ module Loomy
     #               500 streams fine, at scale 2000 it runs past the buffer --
     #               but where that line falls depends on the source's height,
     #               so it is not a promise to make
+    #
+    # The obvious fix for the first two is to give each reader a handle of its
+    # own, which the SourceCache/SourceLoader split makes easy. Measured, and it
+    # is the wrong trade: on a 4200x4800 source with `trim:` it takes peak RSS
+    # from 240 MB to 176 MB and the render from 77 ms to 244 ms. One :random
+    # handle decodes the source once and serves both the scan and the pixels;
+    # two streamed handles decode it twice. This is a memory problem, and 3.2x
+    # the latency is not the way to pay for it.
     class AccessPlan
       def self.streamable(canvas) = new(canvas).streamable
 
