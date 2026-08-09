@@ -2,11 +2,15 @@
 
 module Loomy
   module DSL
-    # Properties whose value has to come from a closed set.
+    # Properties whose value has to come from a known set.
     #
     # The DSL already rejects an unknown property *name*; this rejects an
     # unknown *value* for a name it knows, so `align: :top` fails rather than
     # being quietly ignored.
+    #
+    # Two shapes of set, because not every one is a list: VALUES holds the
+    # closed lists, VALIDATORS the properties that accept a union no list can
+    # spell (`width: 20`, `width: '50%'`, `width: :fill`).
     #
     # `blend:` is deliberately absent. libvips validates its own enum and its
     # error already lists every valid mode, so a copy here would only drift
@@ -33,6 +37,33 @@ module Loomy
       GRADIENT_DIRECTIONS = Render::Sources::Gradient::DIRECTIONS
       LIGHTING_TYPES = AST::Effects::Lighting::TYPES
 
+      # A property whose accepted values cannot be written as a list. `match?`
+      # decides, and `expected` is the sentence InvalidValue prints where it
+      # would otherwise print the list.
+      Rule = Data.define(:expected, :predicate) do
+        def match?(value) = predicate.call(value)
+      end
+
+      # A dimension is a union: a pixel count, a share of the parent box, or the
+      # whole of it. The percentage pattern is layout's own, so whatever passes
+      # here is exactly what the engine can resolve later.
+      #
+      # Without this, anything else -- `width: :fil`, `width: '50'` -- reaches
+      # layout as an *undeclared* size, so the node silently takes the parent
+      # box and the mistake looks like it worked.
+      DIMENSION = Rule.new(
+        expected: 'an Integer of pixels, a percentage String such as "50%", or :fill',
+        predicate: lambda { |value|
+          value.is_a?(Integer) || value == :fill ||
+            (value.is_a?(String) && value.match?(Layout::Engine::PERCENTAGE))
+        }
+      )
+
+      VALIDATORS = {
+        width: DIMENSION,
+        height: DIMENSION
+      }.freeze
+
       # An anchor is a compound like :bottom_right: at most one word from each
       # axis, in either order, and either half may be left out.
       ANCHOR_EXPECTED = [
@@ -45,14 +76,29 @@ module Loomy
 
       def validate!(properties, node_kind = nil)
         properties.each do |name, value|
-          allowed = VALUES[name]
-          next if allowed.nil? || allowed.include?(value)
-
-          raise InvalidValue.new(name, value, allowed, node_kind)
+          validate_membership!(name, value, node_kind)
+          validate_rule!(name, value, node_kind)
         end
 
         validate_anchor!(properties[:anchor], node_kind)
         validate_gradient!(properties[:gradient], node_kind)
+      end
+
+      # A closed set: the value has to be one of the listed ones.
+      def validate_membership!(name, value, node_kind)
+        allowed = VALUES[name]
+        return if allowed.nil? || allowed.include?(value)
+
+        raise InvalidValue.new(name, value, allowed, node_kind)
+      end
+
+      # A set with no list to check against, so a predicate decides. A name
+      # belongs to one shape or the other, never both.
+      def validate_rule!(name, value, node_kind)
+        rule = VALIDATORS[name]
+        return if rule.nil? || rule.match?(value)
+
+        raise InvalidValue.new(name, value, rule.expected, node_kind)
       end
 
       def validate_anchor!(anchor, node_kind)
