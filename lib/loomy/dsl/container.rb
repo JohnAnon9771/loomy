@@ -21,13 +21,15 @@ module Loomy
       def vstack(**, &) = stack(:vertical, **, &)
       def hstack(**, &) = stack(:horizontal, **, &)
 
-      # Opaque extent of an image on disk, for positioning against artwork whose
-      # content does not fill its canvas.
+      # Content extent of an image on disk, for positioning against artwork
+      # whose content does not fill its canvas.
       #
       # Measured through the cache the render will use, so it agrees with what
-      # `trim:` crops to: same orientation, same threshold, same scan.
-      def bounds_of(source)
-        left, top, width, height = sources.trim_bounds(source)
+      # `trim:` crops to: same orientation, same scan. `mode` is `trim:`'s, and
+      # takes the same values, because measuring one way and cropping the other
+      # is how the two come apart.
+      def bounds_of(source, mode = :auto)
+        left, top, width, height = sources.trim_bounds(source, mode)
 
         Bounds.new(x: left, y: top, width: width, height: height)
       end

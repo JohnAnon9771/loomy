@@ -43,6 +43,20 @@ class ExtractBoundsTest < Minitest::Test
     assert_equal [image.width, image.height], [result.width, result.height]
   end
 
+  # And they have to agree in whichever mode was asked for, or positioning
+  # against `bounds_of` puts the artwork somewhere the crop never goes.
+  def test_bounds_of_matches_what_trim_crops_to_in_the_colour_mode
+    source = 'test/assets/trim_white_on_transparent.png'
+    result = nil
+
+    image = Loomy.generate do
+      result = bounds_of source, :color
+      layer source, trim: :color
+    end
+
+    assert_equal [image.width, image.height], [result.width, result.height]
+  end
+
   def test_bounds_of_a_missing_source_names_the_file
     error = assert_raises(Loomy::SourceNotFound) do
       Loomy.generate(size: [10, 10]) { bounds_of 'test/assets/does_not_exist.png' }

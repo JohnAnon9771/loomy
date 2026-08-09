@@ -33,6 +33,17 @@ Restructure of the rendering pipeline. The public API — `Loomy.render`,
   Integer of pixels, a percentage String, or `:fill`. `width: :fil` and
   `width: '50'` used to reach layout as *no size at all*, so the node took the
   parent box and the mistake looked like it had worked.
+- `Render::Trimmer`, and with it a choice of what `trim:` measures: `:alpha` for
+  the extent of the pixels that are not fully transparent, `:color` for the old
+  `find_trim` scan against a background colour, `:auto` to pick by whether the
+  source has an alpha channel. `:auto` is the default and what `trim: true`
+  means, so writing it out says the same as leaving it off, the way `fit:
+  :contain` does. `bounds_of` takes the same modes, so what it
+  reports and what `trim:` crops to cannot come apart. Both modes have a
+  legitimate use — `:color` is the only one that can trim opaque artwork with a
+  uniform border — and the bug was having no way to say which one you meant.
+  The alpha scan is also the cheaper of the two: ~17ms against ~113ms on a
+  4200x4800 source, paid once per source in the measure pass.
 - `AST::Effect#no_op?`, so custom effects take part in pruning. Pruning used to
   dispatch through one hardcoded visitor method per built-in effect.
 - `rake test:baseline` for regenerating golden references deliberately. A
@@ -103,6 +114,18 @@ Restructure of the rendering pipeline. The public API — `Loomy.render`,
 
 ### Fixed
 
+- `trim:` could not see a white subject, and said nothing about it. It was
+  libvips' `find_trim`, which measures distance from a background colour that
+  defaults to **white**: a white subject on a transparent background is that
+  background once flattened against it, so the whole image read as border and
+  the scan came back empty. The empty result then fell through the
+  `width.positive? && height.positive?` guards in `SourceLoader#load_trimmed`
+  and `Layout::Engine#file_intrinsic` to the untrimmed image — a layer that
+  asked to be trimmed, was not, and rendered as if it had been. Greyscale and
+  CMYK sources missed for the same reason, which is the colourspace dependence
+  the issue was opened about. `trim: true` now reads the alpha channel when the
+  source has one, where colour cannot get the answer wrong, and falls back to
+  the colour scan for artwork with no alpha to read. See Added for the modes.
 - `to_blob` silently dropped `dpi`. Both it and `render` now share
   `Loomy::CANVAS_OPTIONS`.
 - `Loomy::DSL::CanvasBuilder` and `Loomy::Bounds` were defined in

@@ -33,8 +33,23 @@ class VocabularyTest < Minitest::Test
     assert_raises(Loomy::InvalidValue) { build { layer 'test/assets/base.png', fit: :squish } }
   end
 
-  def test_trim_rejects_a_non_boolean
+  def test_trim_rejects_a_value_outside_its_vocabulary
     assert_raises(Loomy::InvalidValue) { build { layer 'test/assets/base.png', trim: :yes } }
+  end
+
+  def test_trim_accepts_a_named_mode
+    canvas = build { layer 'test/assets/base.png', trim: :alpha }
+
+    assert_equal :alpha, canvas.children.first.trim
+    build { layer 'test/assets/base.png', trim: :color }
+  end
+
+  # :auto is what `trim: true` means, so writing it out has to be accepted the
+  # same way `fit: :contain` is.
+  def test_trim_accepts_its_default_spelled_out
+    canvas = build { layer 'test/assets/base.png', trim: :auto }
+
+    assert_equal :auto, canvas.children.first.trim
   end
 
   def test_distribute_rejects_an_unknown_mode

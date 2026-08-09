@@ -30,16 +30,18 @@ module Loomy
         @images[[path, target]] ||= read(path, target)
       end
 
-      # The image cropped to its opaque extent and then scaled to the target.
-      # Trimming needs a full-resolution pixel scan either way, so cropping first
-      # and resizing after costs nothing extra and is exact.
-      def load_trimmed(path, target = Target.natural)
-        @images[[path, :trimmed, target]] ||= begin
-          left, top, width, height = @sources.trim_bounds(path)
-          image = read(path, Target.natural)
-          image = image.crop(left, top, width, height) if width.positive? && height.positive?
+      # The image cropped to the extent of its content and then scaled to the
+      # target. Trimming needs a full-resolution pixel scan either way, so
+      # cropping first and resizing after costs nothing extra and is exact.
+      #
+      # The crop is unconditional: a source with nothing to trim reports its own
+      # full extent, so the Trimmer already decided what "no content" means and
+      # this does not get a second opinion on it.
+      def load_trimmed(path, target = Target.natural, mode = :auto)
+        @images[[path, :trimmed, mode, target]] ||= begin
+          left, top, width, height = @sources.trim_bounds(path, mode)
 
-          resize(image, target)
+          resize(read(path, Target.natural).crop(left, top, width, height), target)
         end
       end
 
