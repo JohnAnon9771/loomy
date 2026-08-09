@@ -23,7 +23,8 @@ module Loomy
           frames: frames,
           canvas_size: canvas_size,
           loader: loader,
-          effects: EffectRegistry.snapshot(loader)
+          effects: EffectRegistry.snapshot(loader),
+          premultiplied: @canvas.premultiplied
         ).call(@canvas)
       rescue Vips::Error => e
         raise BackendError.new('Building the render', e.message)

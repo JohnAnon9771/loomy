@@ -8,7 +8,7 @@ module Loomy
       include Container
       include Effects
 
-      property :x, :y, :width, :height, :blend
+      property :x, :y, :width, :height, :blend, :opacity
       property :align, :valign, :anchor, :offset_x, :offset_y
 
       alias blend_mode blend

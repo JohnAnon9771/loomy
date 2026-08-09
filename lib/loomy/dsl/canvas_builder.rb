@@ -2,8 +2,9 @@
 
 module Loomy
   module DSL
-    # Builds the root canvas. Its size and dpi come from the Loomy.render /
-    # Loomy.generate options, so it exposes nesting only.
+    # Builds the root canvas. Everything it carries comes from the
+    # Loomy::CANVAS_OPTIONS half of the Loomy.render / Loomy.generate options,
+    # so it exposes nesting only.
     class CanvasBuilder < NodeBuilder
       include Container
 

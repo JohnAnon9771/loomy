@@ -33,7 +33,10 @@ module Loomy
         fit: FIT,
         trim: [true, false, *Render::Trimmer::MODES],
         distribute: AST::Stack::DISTRIBUTIONS,
-        direction: AST::Stack::DIRECTIONS
+        direction: AST::Stack::DIRECTIONS,
+        # Checked because the failure is otherwise silent: ruby-vips coerces a
+        # truthy non-boolean, so `premultiplied: 'false'` would turn it *on*.
+        premultiplied: [true, false]
       }.freeze
 
       GRADIENT_DIRECTIONS = Render::Sources::Gradient::DIRECTIONS
@@ -61,9 +64,25 @@ module Loomy
         }
       )
 
+      # A share of full opacity: 0.0 invisible, 1.0 the image untouched.
+      # Refused rather than clamped, because `opacity: 50` -- a percentage,
+      # written the way percentages are written -- would clamp to a fully opaque
+      # layer, which is what the *correct* value does. That is `width: :fil`
+      # again, and no epsilon either: softening the edge reopens the same door.
+      #
+      # `cover?` rather than `is_a?(Numeric) && between?(0, 1)`: NAN.between?
+      # raises ArgumentError and Complex(1, 2).between? raises NoMethodError --
+      # Complex is Numeric but not Comparable -- so both would escape as
+      # something other than InvalidValue.
+      OPACITY = Rule.new(
+        expected: 'a Numeric from 0.0 (invisible) to 1.0 (unchanged)',
+        predicate: ->(value) { (0..1).cover?(value) }
+      )
+
       VALIDATORS = {
         width: DIMENSION,
-        height: DIMENSION
+        height: DIMENSION,
+        opacity: OPACITY
       }.freeze
 
       # Blend modes libvips has already accepted, so it is asked once per mode

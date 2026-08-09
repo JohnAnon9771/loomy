@@ -7,7 +7,7 @@ module Loomy
       include Container
       include Effects
 
-      property :x, :y, :width, :height, :blend
+      property :x, :y, :width, :height, :blend, :opacity
       property :anchor, :offset_x, :offset_y
 
       # Cross-axis alignment of the children: `align` for a vertical stack,

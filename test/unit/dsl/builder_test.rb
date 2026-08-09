@@ -72,6 +72,16 @@ class SmartDSLTest < Minitest::Test
     end
   end
 
+  # The root has nothing to be translucent against, and it gets that for free:
+  # the canvas builder declares no properties, so the message names what a canvas
+  # can actually do instead of accepting a value nothing would read.
+  def test_opacity_is_not_a_canvas_property
+    error = assert_raises(Loomy::UnknownProperty) { build_canvas { opacity 0.5 } }
+
+    assert_match(/opacity/, error.message)
+    assert_match(/canvas/, error.message)
+  end
+
   def test_unknown_property_message_lists_what_is_available
     error = assert_raises(Loomy::UnknownProperty) do
       build_canvas { layer('test/assets/base.png') { widht 10 } }

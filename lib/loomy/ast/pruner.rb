@@ -50,6 +50,15 @@ module Loomy
         node.effects.reject(&:no_op?)
       end
 
+      # `opacity: 0` is deliberately not one of these, tempting as it looks. Two
+      # independent reasons:
+      #
+      #   layout   this runs before Layout::Engine, so dropping the node closes
+      #            its slot. In a vstack of three 10px children with the middle
+      #            one faded out, the third moves from y=20 to y=10 -- and
+      #            `opacity: visible ? 1 : 0` is a thing people write.
+      #   blending it is not provably a no-op anyway. Under `blend: :source` a
+      #            child with alpha 0 still *clears* what is beneath it.
       def renderable?(node)
         case node.source_type
         when nil then false

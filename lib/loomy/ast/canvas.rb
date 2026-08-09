@@ -9,6 +9,11 @@ module Loomy
       def height = properties[:size]&.at(1)
       def dpi    = properties[:dpi]
 
+      # Whether every image in this render already carries premultiplied alpha.
+      # Defaulted here rather than left nil because it reaches libvips as a
+      # gboolean, which has no third state.
+      def premultiplied = properties[:premultiplied] || false
+
       def accept(visitor) = visitor.visit_canvas(self)
     end
   end

@@ -14,6 +14,29 @@ Restructure of the rendering pipeline. The public API — `Loomy.render`,
 
 ### Added
 
+- `opacity:` on layers, groups and stacks — a share of full opacity from `0.0`
+  to `1.0`, applied to the node's alpha where it meets its parent. On a group it
+  fades the composited result, which is a different picture from fading each
+  child: where two children overlap, one composed thing at half opacity reads
+  127 and two half-opacity things stacked read 64, and only the first is what
+  fading a group should mean. It is refused rather than clamped outside its
+  range, because `opacity: 50` — a percentage, written the way percentages are
+  written — clamps to a fully opaque layer and so looks like it worked. Effects
+  run before it, and `opacity: 0` keeps its slot in the layout rather than being
+  pruned: dropping it would move everything after it in a stack, and under
+  `blend: :source` an alpha of 0 still clears what is beneath it.
+- `premultiplied:` as a canvas option, forwarded to libvips' `composite`. Needed
+  to reproduce a pipeline that composites with premultiplied alpha, where the
+  flag is true whenever the base image is under a multiply filter — without it
+  that composition is not reproducible. It applies to nested group and stack
+  composites as well as the canvas': under the flag a group's composited result
+  genuinely is premultiplied, so the parent claiming so of its child is the only
+  consistent reading, and a canvas-only flag would be measurably inert for any
+  tree that nests. It is a no-op wherever alpha is 255, so no reference image
+  moves. `compositing_space:` is deliberately *not* exposed alongside it: its
+  only useful value returns a float scRGB image in 0..1, which would change the
+  type `generate` hands back and break the mid-grey pivot every effect is
+  written around.
 - `Layout::Engine`, a measure/arrange pass that resolves every node's size and
   position before any pixel work. Geometry used to be split across
   `Planner::Builder`, `Ops::Layer` and `Ops::Stack`.

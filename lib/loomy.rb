@@ -11,7 +11,11 @@ module Loomy
   # Options that describe the canvas itself. Everything else in the options hash
   # is forwarded to libvips as a write option, so every entry point has to split
   # them on this one list.
-  CANVAS_OPTIONS = %i[size dpi].freeze
+  #
+  # It is also the list DSL::PipelineBuilder builds the canvas' properties from,
+  # so naming an option here is all a new one needs to reach the tree -- and it
+  # cannot reach the saver by accident, which is the divergence #19 was.
+  CANVAS_OPTIONS = %i[size dpi premultiplied].freeze
 
   WRITE_OPTION_ALIASES = {
     quality: :Q
