@@ -8,11 +8,32 @@ require 'test_helper'
 class EffectsTest < Minitest::Test
   PATTERN = 'test/assets/pattern.png'
   MAP = 'test/assets/pattern_map.png'
+  GRID = 'test/assets/grid.png'
+  TRANSLUCENT = '#3366cc80'
 
   def test_blur
     assert_effect 'test/assets/references/blur.png' do
       blur radius: 5
     end
+  end
+
+  def test_color_adjustment
+    assert_effect 'test/assets/references/color_adjustment.png' do
+      adjust_color brightness: 1.2, contrast: 1.3
+    end
+  end
+
+  # Contrast used to be folded into the same gain as brightness, which made the
+  # two indistinguishable. It expands around mid-grey, so mid-grey itself is the
+  # one value it cannot move; brightness moves everything.
+  def test_contrast_pivots_around_mid_grey_and_brightness_does_not
+    expanded = mid_grey_after { adjust_color contrast: 2.0 }
+    compressed = mid_grey_after { adjust_color contrast: 0.5 }
+    brightened = mid_grey_after { adjust_color brightness: 2.0 }
+
+    assert_equal [128, 128, 128], expanded
+    assert_equal [128, 128, 128], compressed
+    assert_equal [255, 255, 255], brightened
   end
 
   # sRGB -> greyscale coefficients vary between libvips releases, so the
@@ -38,6 +59,35 @@ class EffectsTest < Minitest::Test
     assert_effect 'test/assets/references/lighting.png' do
       relight map: MAP, type: :soft
     end
+  end
+
+  # Alpha is not a colour, but `linear` broadcasts across every band: brightening
+  # a half-transparent layer used to double its opacity into full opacity.
+  def test_adjust_color_leaves_alpha_alone
+    image = translucent { adjust_color brightness: 2.0 }
+
+    assert_in_delta 128, image.getpoint(5, 5).last, 0.5
+  end
+
+  # Compositing an opaque map over a translucent image takes the map's opacity
+  # with it, and leaves the map's own colour behind where the image was not.
+  def test_relight_leaves_alpha_alone
+    image = translucent { relight map: MAP }
+
+    assert_in_delta 128, image.getpoint(5, 5).last, 0.5
+  end
+
+  # The same bug seen from the outside: a group's empty margin came back painted
+  # flat grey, because the map was composited over nothing.
+  def test_relight_does_not_light_what_is_not_there
+    image = Loomy.generate(size: [40, 40]) do
+      group width: 40, height: 40 do
+        layer solid: '#0f0', width: 20, height: 20
+        relight map: MAP
+      end
+    end
+
+    assert_equal [0, 0, 0, 0], image.getpoint(30, 30).map(&:to_i)
   end
 
   def test_effects_apply_in_declaration_order
@@ -79,6 +129,16 @@ class EffectsTest < Minitest::Test
     Loomy.generate(size: [200, 200]) do
       layer PATTERN, &effect
     end
+  end
+
+  # grid.png is a flat mid-grey field, which is the one value contrast cannot
+  # move. Rendered at its own size so nothing resamples the pixel being read.
+  def mid_grey_after(&effect)
+    Loomy.generate(size: [200, 200]) { layer(GRID, &effect) }.getpoint(0, 0).first(3).map(&:to_i)
+  end
+
+  def translucent(&effect)
+    Loomy.generate(size: [20, 20]) { layer(solid: TRANSLUCENT, width: 20, height: 20, &effect) }
   end
 
   def difference(one, other)
