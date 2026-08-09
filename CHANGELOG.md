@@ -63,6 +63,11 @@ Restructure of the rendering pipeline. The public API — `Loomy.render`,
   `Loomy::CANVAS_OPTIONS`.
 - `Loomy::DSL::CanvasBuilder` and `Loomy::Bounds` were defined in
   `dsl/pipeline_builder.rb`, where Zeitwerk could not autoload them.
+- Layout and rendering disagreed about EXIF-rotated sources. Measuring reads the
+  header, which does not apply the orientation tag; libvips' `thumbnail` does
+  apply it. A camera JPEG asked for 50x25 measured 50x25 and rendered 13x25.
+  Orientation is now applied once, up front, and skipped for upright sources so
+  it costs nothing in the common case.
 - `fit: :contain`, the explicit spelling of the default, did not behave like the
   default: it took the "be exactly this box" path, so a layer's frame could
   claim 200x200 while the image was 175x200 and anything aligned against it
