@@ -2,57 +2,89 @@
 
 require 'test_helper'
 
+# These used to run against base.png, a flat red field. Blurring or soft-light
+# compositing a uniform colour changes nothing, so the blur and lighting
+# references were byte-identical to their input: both tests passed whether the
+# effect ran or not. That is exactly how `displace` stayed broken -- it called a
+# libvips operation that does not exist, behind a `respond_to?` guard that was
+# always false, and its reference was the untouched source image.
+#
+# pattern.png is a checkerboard with colour ramps, so every effect here has to
+# actually do something to pass.
 class EffectsTest < Minitest::Test
-  def setup
-    @output_dir = 'test/tmp/effects'
-    FileUtils.mkdir_p(@output_dir)
-  end
-
-  def test_displacement
-    reference = 'test/assets/references/displacement.png'
-
-    image = Loomy.generate(size: [200, 200]) do
-      layer 'test/assets/grid.png' do
-        displace map: 'test/assets/disp_map.png', scale: 20
-      end
-    end
-
-    assert_image_similar(reference, image)
-  end
-
-  def test_lighting
-    reference = 'test/assets/references/lighting.png'
-
-    image = Loomy.generate(size: [200, 200]) do
-      layer 'test/assets/base.png' do
-        relight map: 'test/assets/disp_map.png', type: :soft
-      end
-    end
-
-    assert_image_similar(reference, image)
-  end
+  PATTERN = 'test/assets/pattern.png'
+  MAP = 'test/assets/pattern_map.png'
 
   def test_blur
-    reference = 'test/assets/references/blur.png'
-
-    image = Loomy.generate(size: [200, 200]) do
-      layer 'test/assets/base.png' do
-        blur radius: 5
-      end
+    assert_effect 'test/assets/references/blur.png' do
+      blur radius: 5
     end
-
-    assert_image_similar(reference, image)
   end
 
   def test_grayscale
-    reference = 'test/assets/references/grayscale.png'
+    image = assert_effect('test/assets/references/grayscale.png') { grayscale }
 
-    image = Loomy.generate(size: [200, 200]) do
-      layer 'test/assets/base.png' do
-        grayscale
-      end
+    # Grey means the three colour bands agree.
+    pixel = image.getpoint(10, 10)
+
+    assert_in_delta pixel[0], pixel[1], 1
+    assert_in_delta pixel[1], pixel[2], 1
+  end
+
+  def test_displacement
+    assert_effect 'test/assets/references/displacement.png' do
+      displace map: MAP, scale: 20
+    end
+  end
+
+  def test_lighting
+    assert_effect 'test/assets/references/lighting.png' do
+      relight map: MAP, type: :soft
+    end
+  end
+
+  def test_effects_apply_in_declaration_order
+    blur_then_grey = render do
+      blur(radius: 4)
+      grayscale
+    end
+    grey_then_blur = render do
+      grayscale
+      blur(radius: 4)
     end
 
+    refute_in_delta 0.0, difference(blur_then_grey, grey_then_blur), 0.01
+  end
+
+  def test_an_effect_with_a_missing_map_names_the_file
+    error = assert_raises(Loomy::SourceNotFound) do
+      render { displace(map: 'test/assets/no_such_map.png') }.write_to_memory
+    end
+
+    assert_match(/no_such_map/, error.message)
+  end
+
+  private
+
+  # Renders the pattern with the given effect, and checks both that the effect
+  # changed something and that what it produced still matches the reference.
+  def assert_effect(reference, &)
+    image = render(&)
+
+    refute_in_delta 0.0, difference(Vips::Image.new_from_file(PATTERN), image), 0.5,
+                    'the effect left the image unchanged, so this test would pass with the effect removed'
     assert_image_similar(reference, image)
+
+    image
+  end
+
+  def render(&effect)
+    Loomy.generate(size: [200, 200]) do
+      layer PATTERN, &effect
+    end
+  end
+
+  def difference(one, other)
+    (one.cast(:float) - other.cast(:float)).abs.avg
   end
 end

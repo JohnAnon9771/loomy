@@ -19,6 +19,10 @@ class FixturesTest < Minitest::Test
     'overlay_large.png' => { size: [2000, 2000], bands: 4, corner: [0, 255, 0, 255] },
     'grid.png' => { size: [200, 200], bands: 4, corner: [128, 128, 128, 255] },
     'disp_map.png' => { size: [200, 200], bands: 1, corner: [50] },
+    # Structured fixtures for the effect tests. A flat field cannot tell a
+    # working blur from a missing one.
+    'pattern.png' => { size: [200, 200], bands: 4, corner: [30, 0, 90, 255] },
+    'pattern_map.png' => { size: [200, 200], bands: 3, corner: [0, 0, 0] },
     # 500x500, transparent, with a 100x100 opaque red square centred at 200,200.
     'trim_test_source.png' => { size: [500, 500], bands: 4, corner: [0, 0, 0, 0], centre: [255, 0, 0, 255] }
   }.freeze
