@@ -8,7 +8,7 @@ module Loomy
       include Effects
 
       # Geometry and composition.
-      property :x, :y, :width, :height, :fit, :blend, :trim
+      property :x, :y, :width, :height, :fit, :blend, :trim, :opacity
 
       # Semantic layout.
       property :align, :valign, :anchor, :offset_x, :offset_y

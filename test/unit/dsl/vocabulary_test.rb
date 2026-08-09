@@ -109,6 +109,65 @@ class VocabularyTest < Minitest::Test
     end
   end
 
+  # The mistake a clamp would have hidden, so this is the test that pins the
+  # decision to raise.
+  def test_opacity_rejects_a_percentage_written_as_a_whole_number
+    error = assert_raises(Loomy::InvalidValue) { build { layer solid: '#f00', opacity: 50 } }
+
+    assert_equal :opacity, error.property
+    assert_equal 50, error.value
+    assert_match(/Expected: a Numeric from 0\.0 \(invisible\) to 1\.0 \(unchanged\)/, error.message)
+  end
+
+  def test_opacity_rejects_a_negative_share
+    assert_raises(Loomy::InvalidValue) { build { layer solid: '#f00', opacity: -0.5 } }
+  end
+
+  def test_the_block_form_is_checked_for_opacity_too
+    assert_raises(Loomy::InvalidValue) do
+      build do
+        layer do
+          solid '#f00'
+          opacity 50
+        end
+      end
+    end
+  end
+
+  def test_opacity_is_checked_on_containers
+    assert_raises(Loomy::InvalidValue) { build { group(opacity: 2) { layer solid: '#f00' } } }
+    assert_raises(Loomy::InvalidValue) { build { vstack(opacity: -1) { layer solid: '#f00' } } }
+  end
+
+  # NAN is why the rule is `(0..1).cover?` rather than `between?`: NAN.between?
+  # raises ArgumentError, so the caller's mistake would arrive as something other
+  # than a DeclarationError.
+  def test_opacity_rejects_a_value_that_is_not_a_number
+    [:half, '50%', Float::NAN].each do |value|
+      assert_raises(Loomy::InvalidValue) { build { layer solid: '#f00', opacity: value } }
+    end
+  end
+
+  def test_opacity_accepts_every_documented_form
+    [0, 0.0, 0.5, 1, 1.0].each do |opacity|
+      build { layer solid: '#f00', opacity: opacity }
+    end
+  end
+
+  def test_premultiplied_is_checked_on_the_canvas
+    error = assert_raises(Loomy::InvalidValue) { build(premultiplied: 'yes') { layer solid: '#f00' } }
+
+    assert_equal :premultiplied, error.property
+    assert_match(/Expected: true, false/, error.message)
+  end
+
+  # The canvas properties are built by slicing the options, and validation runs
+  # before nils are dropped -- so an option nobody mentioned must not arrive as
+  # a nil to be checked against a vocabulary that has no nil in it.
+  def test_a_canvas_that_omits_premultiplied_still_builds
+    build { layer solid: '#f00' }
+  end
+
   def test_anchor_rejects_a_misspelled_half
     # The half that parses would still have applied; the other would silently
     # fall back to the top-left.
@@ -175,7 +234,7 @@ class VocabularyTest < Minitest::Test
 
   private
 
-  def build(&)
-    Loomy::DSL::PipelineBuilder.new(Loomy::Render::SourceCache.new, { size: [100, 100] }, &).build
+  def build(**, &)
+    Loomy::DSL::PipelineBuilder.new(Loomy::Render::SourceCache.new, { size: [100, 100], ** }, &).build
   end
 end

@@ -76,6 +76,18 @@ end
 buffer = image.write_to_buffer(".png")
 ```
 
+#### Canvas options
+
+These describe the canvas itself. Every *other* option is forwarded to libvips as a write option (`quality:`, `compression:`, …), and all three entry points split them on the same list, so what `generate` honours `render` and `to_blob` honour too.
+
+| Option | Default | What it does |
+| --- | --- | --- |
+| `size:` | auto | `[width, height]` in pixels. Omitted, the canvas is sized from the extent of its children. |
+| `dpi:` | none | Resolution written into the output's metadata. |
+| `premultiplied:` | `false` | Tells libvips the images being composited already carry premultiplied alpha. |
+
+`premultiplied:` exists to reproduce a pipeline that makes that claim — it is not a description of Loomy's own layers, which are straight-alpha. It changes the arithmetic of every composite in the render, nested groups and stacks included, and it is a no-op wherever alpha is 255, so it only shows up when something translucent is blended. See *Known limits* for what it does to the output.
+
 ### 2. Hierarchical Groups
 
 Group layers to apply effects or positioning to a set of nodes collectively.
@@ -150,7 +162,27 @@ Loomy.render("card.png", size: [400, 600]) do
 end
 ```
 
-### 6. Sizing and fit
+### 6. Opacity
+
+`opacity:` takes a share of full opacity, from `0.0` (invisible) to `1.0` (unchanged). It works on layers, groups and stacks:
+
+```ruby
+layer "watermark.png", opacity: 0.35
+
+group opacity: 0.5 do
+  layer "badge.png"
+  layer text: "50% off", size: 24, color: "#fff"
+end
+```
+
+Fading a group is not the same as fading each of its children. A group composites its children first and the fade applies to that result, so where children overlap they stay at their own relative opacities. Fading them one by one lets each fill in part of what the last left behind.
+
+Two things worth knowing:
+
+- **Effects run first, then opacity.** A layer's `blur` sees the layer at full alpha; the fade happens where the finished layer meets its parent. Reversed, a blur would smear the reduced alpha into its neighbours.
+- **`opacity: 0` is invisible, not absent.** It keeps its slot in a stack and its place in the layout, so `opacity: visible ? 1 : 0` does what it reads like. Note that under the operator blend modes (`:source`, `:in`, `:out`, `:clear`, `:xor`) an alpha of zero is not "no contribution" — it still clears what is beneath it. That is libvips' Porter-Duff semantics, not a Loomy choice.
+
+### 7. Sizing and fit
 
 `width:` and `height:` take pixels, a percentage of the parent box, or `:fill`:
 
@@ -196,7 +228,7 @@ bounds = bounds_of "art.png", :alpha   # => Loomy::Bounds(x:, y:, width:, height
 
 Trimming is a full pixel scan, paid once per source per mode. It is also why a trimmed source cannot be streamed — see *Performance*.
 
-### 7. Built-in Effects
+### 8. Built-in Effects
 
 Every effect below is declared inside a layer, group or stack block, and applies in declaration order.
 
@@ -212,7 +244,7 @@ Every effect below is declared inside a layer, group or stack block, and applies
 
 An effect that cannot change a pixel is dropped before any pixel work happens, so `blur radius: 0` costs nothing.
 
-### 8. Custom Effects & Registry
+### 9. Custom Effects & Registry
 
 Define an effect node and register a processor for it:
 
@@ -301,6 +333,17 @@ often you like, so it streams nothing.
   stack. Graph-building failures are still translated, because those happen
   before `generate` returns. Use `render`/`to_blob` if you want the decode
   translated too.
+- `premultiplied: true` leaves the result premultiplied; Loomy does not undo it
+  on the way out, because undoing it would destroy the reproducibility the option
+  exists for. It only matters where the output has partial alpha: when the bottom
+  layer is opaque and covers the canvas — a product photo under a multiply filter,
+  say — the output alpha is 255 everywhere, the two representations coincide, and
+  only the blend arithmetic changed. Effects on a *group* under this flag also
+  operate on premultiplied colour, since `adjust_color` and `relight` split alpha
+  off assuming straight colour.
+- `compositing_space:` is deliberately not exposed. libvips supports it, but the
+  only useful value returns a float scRGB image in 0..1, which changes the type
+  `generate` hands back and the mid-grey pivot every effect is written around.
 - Effect processors are registered per exact class, so a subclass of a registered
   effect needs its own registration — it raises `Loomy::UnknownEffect` rather
   than inheriting the parent's processor.
@@ -360,7 +403,7 @@ layer "art.png" do
 end
 ```
 
-`align`, `valign`, `anchor`, `fit`, `trim`, `distribute`, `blend`, a stack's `direction`, a gradient's `direction` and `relight`'s `type` all have closed vocabularies and say what they expected. `width` and `height` are checked too, against the three forms in *Sizing and fit* rather than against a list: anything else would have reached layout as *no size at all*, and the node would have taken the parent box.
+`align`, `valign`, `anchor`, `fit`, `trim`, `distribute`, `blend`, a canvas's `premultiplied`, a stack's `direction`, a gradient's `direction` and `relight`'s `type` all have closed vocabularies and say what they expected. `width`, `height` and `opacity` are checked too, against a rule rather than a list: anything else would have reached the render as a value it could not use. A `width` outside the three forms in *Sizing and fit* reads as *no size at all* and the node takes the parent box; an `opacity` outside `0.0`–`1.0` is refused rather than clamped, because `opacity: 50` — a percentage, written the way percentages are written — would clamp to a fully opaque layer and look like it worked.
 
 `blend:` is the one vocabulary Loomy does not own, so libvips is *asked* rather than copied — a one-pixel composite, once per mode per process. No list here to drift from the installed version, and the error still names every mode libvips would have taken.
 
