@@ -33,10 +33,14 @@ detectors:
     enabled: false
 
   # x, y, r, g, b, a and w/h are the vocabulary of geometry and colour here.
+  # `e` is the rescued exception, which rubocop's
+  # Naming/RescuedExceptionsVariableName requires be called exactly that -- so
+  # the two tools disagree and rubocop is the one following wider convention.
   UncommunicativeVariableName:
     accept:
       - /^[xywh]\d?$/
       - /^[rgba]$/
+      - /^e$/
   UncommunicativeMethodName:
     accept:
       - /^[xywh]$/

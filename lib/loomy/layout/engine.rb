@@ -45,7 +45,7 @@ module Loomy
         when AST::Canvas, AST::Group then measure_container(node, box)
         when AST::Stack then measure_stack(node, box)
         when AST::Layer then measure_layer(node, box)
-        else raise LayoutError, "Cannot measure #{node.class}"
+        else raise InternalError, "Cannot measure #{node.class}"
         end
       end
 

@@ -296,10 +296,61 @@ often you like, so it streams nothing.
   taller than that on its free axis is scaled down to fit the cap.
 - `Loomy.styles` and `Loomy.effects` are process-global; registration is not
   thread-safe, so register at boot rather than per-request.
+- `Loomy.generate` hands back an unevaluated image, so a source that fails to
+  *decode* fails inside your own `write_to_file` with no Loomy frame on the
+  stack. Graph-building failures are still translated, because those happen
+  before `generate` returns. Use `render`/`to_blob` if you want the decode
+  translated too.
+- Effect processors are registered per exact class, so a subclass of a registered
+  effect needs its own registration — it raises `Loomy::UnknownEffect` rather
+  than inheriting the parent's processor.
+- `Loomy.render` is not atomic. libvips opens the destination before it pulls any
+  pixels, so an error raised part-way through the write can leave a partial file
+  behind — whether it does is the saver's business and varies by libvips version.
+  Write to a temporary path and rename it yourself if you need the destination to
+  be all-or-nothing.
+- `rescue Loomy::Error` is not a total firewall. `AST::Visitor` and
+  `DSL::NodeBuilder` raise `NotImplementedError` at subclass authors, deliberately
+  outside the hierarchy — and since `NotImplementedError < ScriptError`, not
+  `StandardError`, a bare `rescue StandardError` will not catch it either.
 
 ## 🚨 Errors
 
-Everything Loomy raises descends from `Loomy::Error`, so one rescue covers it. Both halves of a declaration are checked: the property name, and its value.
+Everything Loomy raises descends from `Loomy::Error`, so one rescue covers it. Under that sit exactly two categories, and every concrete error is in one of them:
+
+| Category | Means | Whose fault |
+| --- | --- | --- |
+| `Loomy::DeclarationError` | The declaration could not be honoured as written | The caller's |
+| `Loomy::ProcessingError` | The declaration was fine and carrying it out failed | Ours, or libvips' |
+
+Branch on the category, never on the leaf. A leaf added in a later version lands in the right category on its own, so routing written once keeps working:
+
+```ruby
+begin
+  Loomy.to_blob(".png", size: [1200, 630]) { layer params[:image] }
+rescue Loomy::DeclarationError => e   # the request asked for something impossible
+  render_error(422, code: e.code, message: e.message)
+rescue Loomy::ProcessingError => e    # we could not carry it out
+  render_error(500, code: e.code, message: e.message)
+end
+```
+
+Every error also answers `#code` with a stable symbol — `:invalid_source`, `:encode_error` — for putting on a wire. **The category and the `code` are the stable parts; leaf class names are not.** There is deliberately no `status_code`: whether a missing source is a 404, a 400 or a 422 depends on where the path came from, and only the caller knows that.
+
+### The declaration is wrong — `Loomy::DeclarationError`
+
+| Class | `#code` | Raised when |
+| --- | --- | --- |
+| `SourceNotFound` | `:source_not_found` | the file does not exist or cannot be read |
+| `InvalidSource` | `:invalid_source` | the file opens but holds no image libvips can decode |
+| `InvalidColor` | `:invalid_color` | a colour value could not be parsed |
+| `UnknownStyle` | `:unknown_style` | `use :name` names a style never defined |
+| `UnknownProperty` | `:unknown_property` | the node has no such property |
+| `InvalidValue` | `:invalid_value` | the property exists, the value is outside its vocabulary |
+| `UnknownEffect` | `:unknown_effect` | an effect was declared with no processor registered for it |
+| `LayoutError` | `:layout_error` | geometry cannot be resolved — a `"50%"` or a `:fill` with no parent box to be relative to |
+
+Both halves of a declaration are checked: the property name, and its value.
 
 ```ruby
 layer "art.png" do
@@ -309,9 +360,21 @@ layer "art.png" do
 end
 ```
 
-`align`, `valign`, `anchor`, `fit`, `trim`, `distribute`, a stack's `direction`, a gradient's `direction` and `relight`'s `type` all have closed vocabularies and say what they expected. `width` and `height` are checked too, against the three forms in *Sizing and fit* rather than against a list: anything else would have reached layout as *no size at all*, and the node would have taken the parent box. `blend:` is the exception, left to libvips, which validates its own enum and lists the valid modes in its message.
+`align`, `valign`, `anchor`, `fit`, `trim`, `distribute`, `blend`, a stack's `direction`, a gradient's `direction` and `relight`'s `type` all have closed vocabularies and say what they expected. `width` and `height` are checked too, against the three forms in *Sizing and fit* rather than against a list: anything else would have reached layout as *no size at all*, and the node would have taken the parent box.
 
-`Loomy::LayoutError` covers geometry that cannot be resolved — a `"50%"` or a `:fill` with no parent box to be relative to.
+`blend:` is the one vocabulary Loomy does not own, so libvips is *asked* rather than copied — a one-pixel composite, once per mode per process. No list here to drift from the installed version, and the error still names every mode libvips would have taken.
+
+### Carrying it out failed — `Loomy::ProcessingError`
+
+| Class | `#code` | Raised when |
+| --- | --- | --- |
+| `BackendError` | `:backend_error` | libvips refused an operation the composition asked for |
+| `EncodeError` | `:encode_error` | the finished image could not be written — unknown format, unknown write option, unwritable destination |
+| `InternalError` | `:internal_error` | Loomy reached a state it does not handle. Always a bug in Loomy — please report it |
+
+All three wrap the original exception: `#cause` is the `Vips::Error` (or, for a write option of the wrong type, the `TypeError` from ruby-vips), and libvips' own message is quoted under ours. That text is there **to be read, never to be matched on** — it names the operation that refused and lists what it would have accepted, and it moves between libvips releases.
+
+Loomy also asks libvips to refuse incomplete files, so a partial upload raises `InvalidSource` rather than rendering half an image against whatever the decoder had in its buffer.
 
 ## 🧪 Development
 

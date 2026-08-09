@@ -49,9 +49,36 @@ class SourceCacheTest < Minitest::Test
     assert_same alpha, @sources.trim_bounds(WHITE_ON_TRANSPARENT, :alpha)
   end
 
+  # Different answer from a missing file, and a caller mapping this to a status
+  # code needs the two apart: nothing to read there, against something to read
+  # that is not a usable image.
+  def test_a_file_that_is_not_an_image_raises_invalid_source
+    error = assert_raises(Loomy::InvalidSource) { @sources.dimensions('Gemfile') }
+
+    assert_equal 'Gemfile', error.path
+    assert_kind_of Vips::Error, error.cause
+  end
+
+  # The measurement pass scans pixels for a trim, so a truncated source fails
+  # here rather than surviving to the write.
+  def test_a_truncated_source_raises_invalid_source_when_scanned
+    path = truncated_copy
+
+    error = assert_raises(Loomy::InvalidSource) { @sources.trim_bounds(path) }
+
+    assert_equal path, error.path
+  end
+
   def test_reports_the_libvips_loader_behind_a_path
     assert_equal 'pngload', @sources.loader_name(BASE)
     assert_equal 'jpegload', @sources.loader_name(ROTATED)
+  end
+
+  # The rescue this replaces wrapped the whole method, so an unopenable file came
+  # back as "no loader" and the real failure resurfaced later, past the point
+  # where anything still knew which file it was.
+  def test_an_unopenable_source_is_not_reported_as_having_no_loader
+    assert_raises(Loomy::InvalidSource) { @sources.loader_name('Gemfile') }
   end
 
   # A handle cannot change access mode once it is open, so a permission that

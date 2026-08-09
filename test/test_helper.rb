@@ -52,6 +52,24 @@ module TestHelper
     File.join(TestHelper::TMP_DIR, name)
   end
 
+  # A copy of an asset whose header is intact and whose pixel data stops part-way
+  # -- what a download that died mid-transfer leaves behind. libvips opens it and
+  # reports its size, and only fails once pixels are asked for.
+  #
+  # Two thirds, not a half: a JPEG cut that early loses its SOS marker, so libvips
+  # cannot even set the loader up and it fails at open instead. That is a
+  # different failure from the one being tested.
+  #
+  # Written at run time rather than committed: test/assets holds the inputs the
+  # goldens were rendered from, and this is not one of them.
+  def truncated_copy(source = 'test/assets/base.png', name: nil)
+    path = tmp_path(name || "truncated-#{File.basename(source)}")
+    bytes = File.binread(source)
+    File.binwrite(path, bytes[0, bytes.bytesize * 2 / 3])
+
+    path
+  end
+
   # `across_libvips` is the tolerance to use when the running libvips is not the
   # one the references were rendered with. Pass it only for the handful of
   # operations that genuinely move between releases, and only where a
