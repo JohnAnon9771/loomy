@@ -7,10 +7,9 @@ module Loomy
     # node type without teaching every walker about it fails loudly here rather
     # than falling into a silent else-branch.
     #
-    # There is deliberately no per-effect-class hook. Effects differ in their
-    # parameters, not in how the tree is walked, so one visit_effect is enough;
-    # the previous one-method-per-built-in-effect arrangement was also what made
-    # custom effects second-class.
+    # There is deliberately no per-effect-class hook: effects differ in their
+    # parameters, not in how the tree is walked, so one visit_effect is enough
+    # and custom effect classes need no registration here.
     class Visitor
       def visit(node) = node.accept(self)
 

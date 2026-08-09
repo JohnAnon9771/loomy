@@ -2,14 +2,12 @@
 
 require 'test_helper'
 
-# One test per defect the restructure was meant to close, so none of them can
-# come back quietly.
+# Properties that are easy to lose again, each one pinned.
 class RegressionTest < Minitest::Test
   SOURCE = 'test/assets/blue_square.png'
   LARGE = 'test/assets/base_large.png' # 4200x4800
 
-  # Ops::Stack wrote :y and :align straight into the property hash it shared by
-  # reference with the AST node, so rendering a tree changed it.
+  # Rendering reads the tree; it must never write to it.
   def test_rendering_does_not_mutate_the_tree
     canvas = Loomy::DSL::PipelineBuilder.new({ size: [300, 300] }) do
       vstack spacing: 10, align: :center do
@@ -38,8 +36,7 @@ class RegressionTest < Minitest::Test
     assert_equal first, second
   end
 
-  # Layout resolves the final size of every node before anything is loaded, so
-  # a layer nested in a group is loaded at its target size, not its natural one.
+  # A layer nested in a group must still be loaded at its target size.
   def test_nested_layers_are_loaded_at_their_final_size
     loader = RecordingLoader.new(Loomy::Render::SourceLoader.new)
 
@@ -55,14 +52,11 @@ class RegressionTest < Minitest::Test
       effects: Loomy::Render::EffectRegistry.snapshot
     ).call(canvas)
 
-    # base_large.png is 4200x4800, so contain-fitting it into 200x200 gives
-    # 175x200. The point is that the loader is asked for that, not for the
-    # natural 4200x4800 with a resize bolted on afterwards.
+    # base_large.png is 4200x4800; contained into 200x200 that is 175x200.
     assert_equal [[175, 200]], loader.requested_sizes
   end
 
-  # CanvasBuilder and Bounds lived in dsl/pipeline_builder.rb, which Zeitwerk
-  # maps to PipelineBuilder, so neither constant was reachable on its own.
+  # Every constant a caller touches has to resolve from `require "loomy"` alone.
   def test_every_public_constant_autoloads
     assert_kind_of Class, Loomy::DSL::CanvasBuilder
     assert_kind_of Class, Loomy::Bounds
@@ -70,8 +64,7 @@ class RegressionTest < Minitest::Test
     assert_kind_of Class, Loomy::Render::SourceLoader
   end
 
-  # The DSL accepted a layer nested in a layer, put it in the AST, and the
-  # planner then dropped it without a word.
+  # Anything the DSL accepts must reach the output, or be rejected outright.
   def test_nesting_in_a_leaf_layer_fails_loudly
     assert_raises(Loomy::UnknownProperty) do
       Loomy.generate(size: [100, 100]) do

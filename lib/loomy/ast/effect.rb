@@ -8,8 +8,7 @@ module Loomy
     # registry (see Loomy.register_effect), keyed by class.
     class Effect < Node
       # True when this effect provably cannot change a pixel, so passes can drop
-      # it. The pruner used to hardcode one visitor method per built-in effect,
-      # which meant a third-party effect could never take part in this.
+      # it. Custom effects override this to take part in pruning.
       def no_op? = false
 
       def accept(visitor) = visitor.visit_effect(self)

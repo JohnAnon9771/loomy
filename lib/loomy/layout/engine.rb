@@ -9,8 +9,8 @@ module Loomy
     #   measure  bottom-up  -- how big does each node render?
     #   arrange  top-down   -- where does it sit inside its parent?
     #
-    # The result is a side table of {node => Frame}. Nothing is written back
-    # into the tree, which is what stops rendering from mutating the AST.
+    # The result is a side table of {node => Frame}; nothing is written back into
+    # the tree.
     #
     # Measuring needs intrinsic sizes, so it reads image headers -- cheap,
     # libvips does not decode pixels for that -- through the same SourceLoader
@@ -121,8 +121,8 @@ module Loomy
 
       # Measures and places each child, and returns the box the parent ends up
       # occupying. An auto-sized parent shrink-wraps to the extent its children
-      # reach at their *declared* offsets -- alignment is then resolved against
-      # that box, matching how the old compositor sized itself.
+      # reach at their *declared* offsets; alignment is then resolved against
+      # the box that produces.
       def arrange_children(node, inner)
         sizes = node.children.map { |child| measure(child, inner) }
         box = resolve_box(inner, declared_extent(node.children, sizes))

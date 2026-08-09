@@ -4,13 +4,11 @@ module Loomy
   module DSL
     # Base for the block-form builders.
     #
-    # A builder accumulates properties, children and effects and only then
-    # constructs the node, which is why AST nodes can be frozen. Builders used
-    # to write straight into the properties hash of an already-built node.
+    # A builder accumulates properties, children and effects and constructs the
+    # node only at the end, which is what lets AST nodes be frozen.
     #
     # Each node kind gets its own builder exposing only what that kind supports,
-    # so `solid` inside a `group`, or a nested `layer` inside a leaf `layer`,
-    # now fails with a message instead of being accepted and ignored.
+    # so `solid` inside a `group` fails with a message naming what is available.
     class NodeBuilder
       class << self
         # Declares `name(value)` writers that set the property of the same name.

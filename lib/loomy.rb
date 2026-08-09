@@ -8,10 +8,9 @@ require 'loomy/version'
 require 'loomy/errors'
 
 module Loomy
-  # Options that describe the canvas itself. Everything else in the options
-  # hash is forwarded to libvips as a write option. Keeping the two sets in one
-  # constant is what stops `render` and `to_blob` from drifting apart -- they
-  # used to slice different key lists, so `to_blob` silently dropped `dpi`.
+  # Options that describe the canvas itself. Everything else in the options hash
+  # is forwarded to libvips as a write option, so every entry point has to split
+  # them on this one list.
   CANVAS_OPTIONS = %i[size dpi].freeze
 
   WRITE_OPTION_ALIASES = {

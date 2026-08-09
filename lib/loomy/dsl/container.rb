@@ -3,12 +3,8 @@
 module Loomy
   module DSL
     # Nesting methods, for the builders whose node can hold children: the canvas,
-    # groups and stacks. Leaf layers deliberately do not include this.
-    #
-    # LayerBuilder used to serve all three roles at once, so it offered `layer`
-    # and `group` on leaves (where Planner::Builder then dropped the children
-    # without a word) and `solid`/`text`/`fit` on containers (where nothing read
-    # them).
+    # groups and stacks. Leaf layers deliberately do not include this, so a
+    # nested `layer` inside a layer is rejected rather than quietly dropped.
     module Container
       def layer(source = nil, **, &)
         add_child(LayerBuilder.new(source: source, **).evaluate(&).build)

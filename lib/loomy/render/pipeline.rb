@@ -3,10 +3,6 @@
 module Loomy
   module Render
     # Runs one render: lay the tree out, then paint it.
-    #
-    # Replaces Engine::VipsBackend, which used to build an operation tree and
-    # then run an optimiser over it that recomputed what the builder had already
-    # decided.
     class Pipeline
       def initialize(canvas)
         @canvas = canvas

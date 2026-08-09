@@ -5,10 +5,9 @@ require 'minitest/autorun'
 require 'vips'
 require 'fileutils'
 
-# Test fixtures under test/assets are committed binaries, not generated at run
-# time. They are the inputs the golden references in test/assets/references were
-# produced from, so regenerating them from code would silently move every
-# golden. test/fixtures_test.rb pins their contract instead.
+# Fixtures under test/assets are committed binaries, not generated at run time:
+# they are the inputs the golden references were produced from, so regenerating
+# them would move every golden. test/fixtures_test.rb pins their contract.
 module TestHelper
   TMP_DIR = 'test/tmp'
 
@@ -20,8 +19,8 @@ module TestHelper
         bundle exec rake test:baseline
 
     Then inspect the generated PNG before committing it. References are the
-    visual contract of the suite; they must never be created as a side effect
-    of a normal test run.
+    visual contract of the suite and must never appear as a side effect of an
+    ordinary test run.
   MSG
 
   # Golden images are only exactly reproducible against the libvips build they

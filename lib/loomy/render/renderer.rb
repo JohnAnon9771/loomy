@@ -5,11 +5,9 @@ module Loomy
     # Walks the tree and produces the image, using the sizes and positions
     # layout already settled on.
     #
-    # There is no intermediate operation graph any more. libvips is itself a
-    # demand-driven pipeline, so the old Ops tree was a second lazy graph whose
-    # nodes each wrapped exactly one libvips call; the only things it added that
-    # were worth keeping -- batched compositing and a per-render source cache --
-    # live in Compositor and SourceLoader.
+    # There is deliberately no intermediate operation graph: libvips is itself a
+    # demand-driven pipeline, so building a second one buys nothing. Batched
+    # compositing lives in Compositor, source caching in SourceLoader.
     class Renderer < AST::Visitor
       MM_PER_INCH = 25.4
 
@@ -65,9 +63,6 @@ module Loomy
         end
       end
 
-      # Layout resolved the exact size this layer renders at, so the loader is
-      # asked for that size directly -- there is no load-then-resize pair left
-      # for an optimiser to have to fuse back together.
       def file_image(node, frame)
         fit = load_fit(node)
 
@@ -78,10 +73,10 @@ module Loomy
         end
       end
 
-      # Layout already committed to frame.width x frame.height, so the loader has
-      # to hit it exactly whenever the declaration asked for a specific box.
-      # `fit: :contain` is the case where the frame is *derived* from the aspect
-      # ratio, so containing into it reproduces it.
+      # Layout committed to frame.width x frame.height, so the loader has to hit
+      # it exactly whenever the declaration asked for a specific box. Under
+      # :contain the frame is *derived* from the aspect ratio, so containing into
+      # it reproduces it.
       def load_fit(node)
         return :cover if node.fit == :cover
         return :stretch if node.fit == :fill || node.width == :fill || node.height == :fill

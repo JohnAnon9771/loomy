@@ -17,8 +17,7 @@ module Loomy
     end
   end
 
-  # A colour value could not be parsed. Raised instead of silently falling back
-  # to opaque black, which used to turn a typo into a rendering result.
+  # A colour value could not be parsed.
   class InvalidColor < Error
     attr_reader :value
 

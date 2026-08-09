@@ -33,9 +33,7 @@ class PrunerTest < Minitest::Test
     assert_equal 5, effects.first.radius
   end
 
-  # The pruner used to dispatch through one hardcoded visitor method per
-  # built-in effect (visit_blur_effect, visit_lighting_effect, ...), so a custom
-  # effect could never declare itself a no-op.
+  # Pruning must be open to effects it does not know about.
   def test_custom_effects_participate_in_pruning
     dimmer = Class.new(Loomy::AST::Effect) do
       def amount = properties[:amount]

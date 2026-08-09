@@ -4,8 +4,8 @@ module Loomy
   module Render
     # Maps effect node classes to the processor that applies them.
     #
-    # A registry is built per render from Loomy.effects, so a render works from
-    # a stable snapshot rather than reading a mutable global part-way through.
+    # Built per render from Loomy.effects, so one render works from a stable
+    # snapshot rather than reading a mutable global part-way through.
     class EffectRegistry
       def initialize(processors)
         @processors = processors

@@ -5,10 +5,8 @@ module Loomy
     # Base class for every node in the tree.
     #
     # Nodes are immutable: properties, children and effects are frozen at
-    # construction, and passes that change the tree rebuild it with #with. This
-    # is deliberate. Rendering used to write layout results (:x, :y, :align)
-    # straight back into the property hash it shared by reference with the AST,
-    # so rendering the same tree twice produced different output.
+    # construction, and passes that change the tree rebuild it with #with. That
+    # is what lets the same tree render twice and give the same image.
     #
     # `properties` is positional rather than a keyword argument so that nodes
     # can still be built as `Blur.new(radius: 5)`.

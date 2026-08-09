@@ -3,10 +3,8 @@
 require 'test_helper'
 
 class SmartDSLTest < Minitest::Test
-  # No `require 'loomy/dsl/pipeline_builder'` here on purpose: CanvasBuilder now
-  # lives in its own file, so Zeitwerk can autoload it. It used to be defined
-  # inside pipeline_builder.rb, which Zeitwerk maps to PipelineBuilder, so this
-  # constant was unreachable without a manual require.
+  # Deliberately no manual require: both constants have to be autoloadable from
+  # `require "loomy"` alone.
   def test_canvas_builder_is_autoloadable
     assert_kind_of Class, Loomy::DSL::CanvasBuilder
     assert_kind_of Class, Loomy::Bounds
@@ -50,8 +48,7 @@ class SmartDSLTest < Minitest::Test
     assert_equal 5, layer.y
   end
 
-  # A layer is a leaf. Nesting used to be accepted by the DSL, land in the AST,
-  # and then be dropped without a word by the planner.
+  # A layer is a leaf: nesting must be rejected, not silently dropped.
   def test_nesting_inside_a_layer_is_rejected
     error = assert_raises(Loomy::UnknownProperty) do
       build_canvas do
@@ -64,7 +61,7 @@ class SmartDSLTest < Minitest::Test
     assert_match(/layer/, error.message)
   end
 
-  # Groups accepted `solid`, `text`, `fit` and friends, and nothing ever read them.
+  # Source properties are meaningless on a group and must not be accepted.
   def test_source_properties_are_rejected_on_a_group
     assert_raises(Loomy::UnknownProperty) do
       build_canvas do

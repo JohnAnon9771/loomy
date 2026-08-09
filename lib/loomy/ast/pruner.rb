@@ -10,9 +10,7 @@ module Loomy
     #   * containers left empty once their children were dropped
     #
     # Rebuilds the tree instead of editing it in place, because AST nodes are
-    # frozen. This replaces AST::Optimizer, whose name collided with the
-    # (removed) Planner::Optimizer and whose effect handling was a closed set of
-    # hardcoded visitor methods.
+    # frozen.
     class Pruner
       def initialize(canvas)
         @canvas = canvas

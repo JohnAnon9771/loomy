@@ -4,9 +4,7 @@ require 'test_helper'
 
 class DpiTest < Minitest::Test
   def test_dpi_survives_to_blob
-    # `render` sliced (:size, :dpi) while `to_blob` sliced (:size) only, so dpi
-    # was silently dropped for in-memory output. Both now go through
-    # Loomy::CANVAS_OPTIONS.
+    # In-memory output has to carry dpi just like writing to a file does.
     blob = Loomy.to_blob('.png', size: [200, 200], dpi: 300) do
       layer 'test/assets/blue_square.png'
     end

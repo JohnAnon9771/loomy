@@ -7,8 +7,7 @@ module Loomy
   #   Color.new('#0000ff80').rgba   #=> [0, 0, 255, 128]
   #   Color.new([10, 20, 30]).rgba  #=> [10, 20, 30, 255]
   #
-  # Anything it cannot parse raises InvalidColor. It used to return opaque
-  # black instead, which meant a typo in a hex string rendered silently.
+  # Anything it cannot parse raises InvalidColor.
   class Color
     HEX = /\A(\h{3}|\h{6}|\h{8})\z/
     CHANNEL_RANGE = (0..255)

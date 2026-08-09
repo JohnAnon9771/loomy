@@ -33,8 +33,7 @@ class ColorTest < Minitest::Test
     assert_equal [10, 20, 30, 40], color.rgba
   end
 
-  # Previously these all returned opaque black, so a typo in a hex string
-  # rendered as a plausible-looking result instead of failing.
+  # A typo in a colour must fail, not render as a plausible-looking result.
   def test_invalid_input_raises
     assert_raises(Loomy::InvalidColor) { Loomy::Color.new(nil).rgba }
     assert_raises(Loomy::InvalidColor) { Loomy::Color.new('invalid').rgba }

@@ -35,12 +35,6 @@ module Loomy
 
     # Warps the image by resampling it at coordinates pushed around by the map.
     #
-    # This used to call a `displace` operation guarded by `respond_to?`. libvips
-    # has no such operation and ruby-vips resolves through method_missing, so
-    # the guard was always false and the effect returned the image untouched --
-    # its golden reference was byte-identical to the input. `mapim` is the
-    # primitive that actually does this.
-    #
     # A mid-grey map pixel (128) means no displacement; darker pulls back along
     # the axis and lighter pushes forward, up to `scale` pixels. The map's first
     # band drives x and its second drives y, falling back to the first for a

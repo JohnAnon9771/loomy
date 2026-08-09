@@ -6,10 +6,7 @@ module Loomy
     #
     # Cross-axis alignment of the children is `align` for a vertical stack and
     # `valign` for a horizontal one -- whichever names the axis the children are
-    # *not* stacked along. (The old AST comment described `valign` as main-axis
-    # distribution; that was never what the code did.)
-    #
-    # `distribute` is main-axis distribution, and is genuinely new.
+    # *not* stacked along. `distribute` is the main axis.
     class Stack < Node
       include Positionable
 

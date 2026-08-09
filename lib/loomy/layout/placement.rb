@@ -4,9 +4,7 @@ module Loomy
   module Layout
     # Turns a node's declared placement into a coordinate inside its parent box.
     #
-    # This is the whole of Loomy's positioning vocabulary, in one place. It used
-    # to be spread across Ops::Layer (align/valign/anchor), Planner::Builder
-    # (percentages) and Ops::Stack (main-axis offsets).
+    # This is the whole of Loomy's positioning vocabulary, in one place.
     module Placement
       # `anchor:` is a compound like :bottom_right or :middle_center. The two
       # halves are independent and either may be absent.

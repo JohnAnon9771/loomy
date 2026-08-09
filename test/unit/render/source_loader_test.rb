@@ -41,9 +41,7 @@ class SourceLoaderTest < Minitest::Test
   end
 
   def test_trimmed_load_crops_then_scales_to_the_target
-    # The old path loaded at twice the target width -- but only when that width
-    # happened to be below 1000 -- then trimmed the downscaled copy. Cropping at
-    # full resolution and scaling after is exact and needs no magic numbers.
+    # Cropping at full resolution and scaling after gives the exact target.
     image = @loader.load_trimmed(TRIMMABLE, width: 50, height: 50)
 
     assert_equal [50, 50], [image.width, image.height]
@@ -56,10 +54,9 @@ class SourceLoaderTest < Minitest::Test
     assert_equal [100, 100], [image.width, image.height]
   end
 
-  # PNG has no shrink-on-load, so routing it through Vips::Image.thumbnail(path)
+  # PNG has no shrink-on-load: routing it through Vips::Image.thumbnail(path)
   # decodes in full and then costs about twice as much as decoding and resizing
-  # by hand. The two paths are pixel-identical, so this is purely about which
-  # one gets used.
+  # by hand.
   def test_png_does_not_take_the_shrink_on_load_path
     refute_includes Loomy::Render::SourceLoader::SHRINK_ON_LOAD, 'pngload'
     assert_includes Loomy::Render::SourceLoader::SHRINK_ON_LOAD, 'jpegload'

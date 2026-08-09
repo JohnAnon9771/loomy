@@ -4,9 +4,8 @@ module Loomy
   module Render
     # Flattens a set of placed images onto a transparent background.
     #
-    # This is the part of the old engine worth keeping: everything goes through
-    # a single libvips `composite` call with arrays of images, blend modes and
-    # coordinates, rather than one composite per layer.
+    # Everything goes through a single libvips `composite` call taking arrays of
+    # images, blend modes and coordinates, rather than one composite per layer.
     class Compositor
       Placed = Data.define(:image, :blend, :x, :y)
 

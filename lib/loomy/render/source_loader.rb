@@ -15,10 +15,9 @@ module Loomy
       TRIM_THRESHOLD = 10
 
       # Loaders that can decode straight to a reduced size. For everything else
-      # `thumbnail(path, ...)` decodes in full anyway and then costs *more* than
-      # decoding and resizing by hand -- measured at ~2x for PNG and TIFF, which
-      # is why this is a list rather than an unconditional call. The two paths
-      # are pixel-identical (MAE 0.0).
+      # `thumbnail(path, ...)` decodes in full anyway and then costs ~2x more
+      # than decoding and resizing by hand (measured on PNG and TIFF), so the
+      # choice is worth making per format. Both paths are pixel-identical.
       SHRINK_ON_LOAD = %w[jpegload webpload heifload jxlload pdfload svgload].freeze
 
       def initialize
@@ -57,10 +56,8 @@ module Loomy
       end
 
       # The image cropped to its opaque extent and then scaled to the target.
-      # Trimming needs a full-resolution pixel scan either way, so this crops
-      # first and resizes after, which is exact. The old path loaded at twice
-      # the target width (only when that width happened to be under 1000) and
-      # trimmed the downscaled copy.
+      # Trimming needs a full-resolution pixel scan either way, so cropping first
+      # and resizing after costs nothing extra and is exact.
       def load_trimmed(path, width: nil, height: nil, fit: :contain)
         @images[[path, :trimmed, width, height, fit]] ||= begin
           left, top, trim_width, trim_height = trim_bounds(path)
@@ -83,9 +80,9 @@ module Loomy
 
       def read(path, width, height, fit)
         image = header(path)
-        # Layout resolves a size for every layer, including layers that simply
-        # render at their natural size, so the common case arrives here asking
-        # for exactly what is already on disk. Resampling that is pure waste.
+        # Layout resolves a size for every layer, including ones that render at
+        # their natural size, so the common case asks for what is already on
+        # disk. Resampling that would be pure waste.
         return with_alpha(image) unless resize?(image, width, height)
 
         if shrink_on_load?(path)

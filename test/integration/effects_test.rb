@@ -2,15 +2,9 @@
 
 require 'test_helper'
 
-# These used to run against base.png, a flat red field. Blurring or soft-light
-# compositing a uniform colour changes nothing, so the blur and lighting
-# references were byte-identical to their input: both tests passed whether the
-# effect ran or not. That is exactly how `displace` stayed broken -- it called a
-# libvips operation that does not exist, behind a `respond_to?` guard that was
-# always false, and its reference was the untouched source image.
-#
-# pattern.png is a checkerboard with colour ramps, so every effect here has to
-# actually do something to pass.
+# pattern.png is a checkerboard with colour ramps rather than a flat field:
+# blurring or soft-light compositing a uniform colour changes nothing, so a flat
+# source cannot tell a working effect from a missing one.
 class EffectsTest < Minitest::Test
   PATTERN = 'test/assets/pattern.png'
   MAP = 'test/assets/pattern_map.png'
@@ -21,9 +15,9 @@ class EffectsTest < Minitest::Test
     end
   end
 
-  # sRGB -> greyscale coefficients changed between libvips releases, so the
-  # reference only matches exactly on the version it was rendered with. The
-  # assertion below is the one that actually pins the behaviour.
+  # sRGB -> greyscale coefficients vary between libvips releases, so the
+  # reference is only exact on the version it was rendered with. The band
+  # equality below is what actually pins the behaviour.
   def test_grayscale
     image = assert_effect('test/assets/references/grayscale.png', across_libvips: 3.0) { grayscale }
 
@@ -69,8 +63,8 @@ class EffectsTest < Minitest::Test
 
   private
 
-  # Renders the pattern with the given effect, and checks both that the effect
-  # changed something and that what it produced still matches the reference.
+  # Checks both that the effect changed something and that what it produced
+  # still matches the reference.
   def assert_effect(reference, across_libvips: nil, &)
     image = render(&)
 

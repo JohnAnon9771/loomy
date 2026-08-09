@@ -2,9 +2,8 @@
 
 require 'test_helper'
 
-# Layout is where geometry lives now. It used to be spread across
-# Planner::Builder (percentages), Ops::Layer (align/valign/anchor/fill) and
-# Ops::Stack (main-axis offsets), with no rule for which layer decided what.
+# Layout owns all of Loomy's geometry: percentages, fits, alignment, anchoring
+# and stack offsets all resolve here, before anything is rendered.
 class LayoutEngineTest < Minitest::Test
   SQUARE = 'test/assets/blue_square.png'  # 200x200
   TALL = 'test/assets/base_large.png'     # 4200x4800
@@ -144,9 +143,6 @@ class LayoutEngineTest < Minitest::Test
     assert_equal 150, layer_frames(frames).first.x
   end
 
-  # Main-axis distribution is new. The old AST called `valign` "main-axis
-  # distribution" in a comment, but it was only ever applied as cross-axis
-  # alignment, so nothing of the sort existed.
   def test_main_axis_distribution_centre
     frames, = layout(size: [200, 300]) do
       vstack distribute: :center do
