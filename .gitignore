@@ -9,5 +9,8 @@
 test/tmp/
 bench/tmp/
 
-# Bundler
+# Bundler. A library does not commit its lockfile: each supported Ruby has to
+# resolve its own compatible set. Pinning one meant rubocop's `parallel`
+# dependency, resolved on 3.3, made the 3.2 build unresolvable.
 /.bundle/
+Gemfile.lock
