@@ -1,9 +1,9 @@
 # frozen_string_literal: true
 
 module Loomy
-  Bounds = Data.define(:x, :y, :width, :height)
-
   module DSL
+    # Entry point for the DSL: turns the options and block given to
+    # Loomy.render / Loomy.generate into a canvas.
     class PipelineBuilder
       def initialize(options, &block)
         @options = options
@@ -11,75 +11,10 @@ module Loomy
       end
 
       def build
-        # In MVP, we assume the outer block defines a canvas-like structure
-        # or we wrapp it. For the prompt example: Loomy.render "file", size: [w, h] do ...
-        # The options contain size.
-
-        canvas = AST::Canvas.new(size: @options[:size], dpi: @options[:dpi])
-        CanvasBuilder.new(canvas).evaluate(&@block)
-        canvas
-      end
-    end
-
-    class CanvasBuilder
-      def initialize(canvas)
-        @canvas = canvas
-      end
-
-      def evaluate(&block)
-        instance_eval(&block) if block_given?
-      end
-
-      def layer(source = nil, **options, &block)
-        add_layer(source, options, &block)
-      end
-
-      # Specialized layer aliases from the example
-      def template(source = nil, **options, &block)
-        add_layer(source, options.merge(role: :template), &block)
-      end
-
-      def mask(source = nil, **options, &block)
-        add_layer(source, options.merge(role: :mask), &block)
-      end
-
-      def artwork(source = nil, **options, &block)
-        add_layer(source, options.merge(role: :artwork), &block)
-      end
-
-      def group(**options, &block)
-        node = AST::Group.new(options)
-        @canvas.add_child(node)
-
-        LayerBuilder.new(node).evaluate(&block) if block_given?
-        node
-      end
-
-      def stack(direction, **options, &block)
-        node = AST::Stack.new(options.merge(direction: direction))
-        @canvas.add_child(node)
-
-        LayerBuilder.new(node).evaluate(&block) if block_given?
-        node
-      end
-
-      def vstack(**options, &block) = stack(:vertical, **options, &block)
-      def hstack(**options, &block) = stack(:horizontal, **options, &block)
-
-      def bounds_of(source)
-        img = Vips::Image.new_from_file(source)
-        left, top, w, h = img.find_trim(threshold: 10)
-        Bounds.new(x: left, y: top, width: w, height: h)
-      end
-
-      private
-
-      def add_layer(source, options, &block)
-        node = AST::Layer.new(source: source, **options)
-        @canvas.add_child(node)
-
-        # Evaluate block with LayerBuilder if provided
-        LayerBuilder.new(node).evaluate(&block) if block_given?
+        CanvasBuilder
+          .new(size: @options[:size], dpi: @options[:dpi])
+          .evaluate(&@block)
+          .build
       end
     end
   end

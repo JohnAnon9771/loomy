@@ -1,2 +1,17 @@
 .DS_Store
-test/tmp/*
+
+# File-manager / editor artifacts.
+.!*
+
+# Test and benchmark scratch output. Fixtures (test/assets) and golden
+# references (test/assets/references) are committed and must stay tracked.
+test/tmp/
+bench/tmp/
+
+# RubyCritic report output.
+tmp/
+
+# A library does not commit its lockfile: each supported Ruby resolves its own
+# compatible set.
+/.bundle/
+Gemfile.lock

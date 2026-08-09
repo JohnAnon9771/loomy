@@ -33,10 +33,26 @@ class ColorTest < Minitest::Test
     assert_equal [10, 20, 30, 40], color.rgba
   end
 
-  def test_invalid_input_defaults_to_black
-    assert_equal [0, 0, 0, 255], Loomy::Color.new(nil).rgba
-    assert_equal [0, 0, 0, 255], Loomy::Color.new('invalid').rgba
-    assert_equal [0, 0, 0, 255], Loomy::Color.new('#abcd').rgba # Invalid length
+  # A typo in a colour must fail, not render as a plausible-looking result.
+  def test_invalid_input_raises
+    assert_raises(Loomy::InvalidColor) { Loomy::Color.new(nil).rgba }
+    assert_raises(Loomy::InvalidColor) { Loomy::Color.new('invalid').rgba }
+    assert_raises(Loomy::InvalidColor) { Loomy::Color.new('#abcd').rgba } # invalid length
+    assert_raises(Loomy::InvalidColor) { Loomy::Color.new('#zzz').rgba }  # right length, not hex
+    assert_raises(Loomy::InvalidColor) { Loomy::Color.new([1, 2]).rgba }  # too few channels
+    assert_raises(Loomy::InvalidColor) { Loomy::Color.new([0, 0, 300]).rgba } # out of range
+    assert_raises(Loomy::InvalidColor) { Loomy::Color.new(:red).rgba } # named colours unsupported
+  end
+
+  def test_invalid_color_message_lists_accepted_forms
+    error = assert_raises(Loomy::InvalidColor) { Loomy::Color.new('nope').rgba }
+
+    assert_match(/#rrggbbaa/, error.message)
+    assert_equal 'nope', error.value
+  end
+
+  def test_error_hierarchy
+    assert_operator Loomy::InvalidColor, :<, Loomy::Error
   end
 
   def test_accessors

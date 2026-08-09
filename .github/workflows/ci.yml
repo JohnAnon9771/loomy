@@ -1,0 +1,54 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # Data.define, used for Bounds/Frame/Target, needs Ruby 3.2.
+        ruby: ['3.2', '3.3', '3.4']
+
+    # The analysis tools carry the widest dependency trees and the highest Ruby
+    # floors. Skipping them here keeps the matrix testing the library rather
+    # than what rubocop and rubycritic happen to support.
+    env:
+      BUNDLE_WITHOUT: lint
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install libvips
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends libvips42 libvips-tools
+
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: ${{ matrix.ruby }}
+          bundler-cache: true
+
+      - run: bundle exec rake test
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # rubycritic reads git history for churn.
+          fetch-depth: 0
+
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.3'
+          bundler-cache: true
+
+      - run: bundle exec rubocop --format github
+
+      - name: Code smells
+        run: bundle exec rake critic:console

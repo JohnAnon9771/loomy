@@ -23,6 +23,18 @@ class FillTest < Minitest::Test
     assert_equal [255, 0, 255, 255], res.getpoint(199, 199).map(&:to_i)
   end
 
+  # `:fill` has to stretch, not contain: the layer must reach both edges even
+  # when the source's aspect ratio does not match the box.
+  def test_fill_stretches_a_file_layer_across_the_box
+    res = Loomy.generate(size: [400, 100]) do
+      layer 'test/assets/blue_square.png', width: :fill, height: 60
+    end
+
+    assert_equal [0, 0, 255, 255], res.getpoint(0, 30).map(&:to_i)
+    assert_equal [0, 0, 255, 255], res.getpoint(399, 30).map(&:to_i)
+    assert_equal 0, res.getpoint(200, 80)[3]
+  end
+
   def test_fill_block_usage
     res = Loomy.generate(size: [100, 100]) do
       layer do

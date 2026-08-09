@@ -3,9 +3,15 @@
 require 'vips'
 require 'zeitwerk'
 require 'loomy/version'
+# Several constants directly under Loomy, which is not a shape Zeitwerk can
+# autoload, so they are required eagerly and the file is ignored below.
+require 'loomy/errors'
 
 module Loomy
-  class Error < StandardError; end
+  # Options that describe the canvas itself. Everything else in the options hash
+  # is forwarded to libvips as a write option, so every entry point has to split
+  # them on this one list.
+  CANVAS_OPTIONS = %i[size dpi].freeze
 
   WRITE_OPTION_ALIASES = {
     quality: :Q
@@ -16,22 +22,23 @@ module Loomy
     'dsl' => 'DSL',
     'ast' => 'AST'
   )
+  loader.ignore("#{__dir__}/loomy/errors.rb")
   loader.setup
 
   class << self
-    def generate(**options, &block)
-      canvas = DSL::PipelineBuilder.new(options, &block).build
-      canvas = AST::Optimizer.new(canvas).call
-      Engine::VipsBackend.new(canvas).call
+    def generate(**options, &)
+      canvas = DSL::PipelineBuilder.new(options, &).build
+      canvas = AST::Pruner.new(canvas).call
+      Render::Pipeline.new(canvas).call
     end
 
-    def render(output_path, **options, &block)
-      image = generate(**options.slice(:size, :dpi), &block)
+    def render(output_path, **options, &)
+      image = generate(**canvas_options(options), &)
       image.write_to_file(output_path, **write_options(options))
     end
 
-    def to_blob(format, **options, &block)
-      image = generate(**options.slice(:size), &block)
+    def to_blob(format, **options, &)
+      image = generate(**canvas_options(options), &)
       image.write_to_buffer(format, **write_options(options))
     end
 
@@ -53,8 +60,12 @@ module Loomy
 
     private
 
+    def canvas_options(options)
+      options.slice(*CANVAS_OPTIONS)
+    end
+
     def write_options(options)
-      options.except(:size, :dpi).transform_keys { |k| WRITE_OPTION_ALIASES.fetch(k, k) }
+      options.except(*CANVAS_OPTIONS).transform_keys { |key| WRITE_OPTION_ALIASES.fetch(key, key) }
     end
   end
 end

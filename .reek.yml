@@ -1,0 +1,61 @@
+---
+# Reek's defaults are tuned for object-heavy application code. Loomy is a
+# pipeline over libvips: passes that take a tree in and return values out,
+# plus small value objects. The detectors disabled below fire constantly on
+# that shape without pointing at anything worth changing.
+#
+# Everything not listed here stays on, including the ones that did point at
+# something real: TooManyMethods, LongParameterList, HighComplexity,
+# RepeatedConditional, DataClump, ControlParameter and DuplicateCode.
+
+detectors:
+  # Private helpers that transform their arguments and touch no instance state
+  # are the point of a pass, not a smell. Reek would have every one of them
+  # moved to another class.
+  UtilityFunction:
+    enabled: false
+  FeatureEnvy:
+    enabled: false
+
+  # Fires on reading the same attribute twice in a method (`image.width`), which
+  # is cheaper and clearer than hoisting every read into a local.
+  DuplicateMethodCall:
+    enabled: false
+
+  # Duplicates rubocop's Style/Documentation, which is off for the same reason:
+  # a four-line value class does not need a doc comment to be understood.
+  IrresponsibleModule:
+    enabled: false
+
+  # nil is a real value in this API: an unset width is nil, and telling that
+  # apart from :fill or a percentage is the job.
+  NilCheck:
+    enabled: false
+
+  # x, y, r, g, b, a and w/h are the vocabulary of geometry and colour here.
+  UncommunicativeVariableName:
+    accept:
+      - /^[xywh]\d?$/
+      - /^[rgba]$/
+  UncommunicativeMethodName:
+    accept:
+      - /^[xywh]$/
+      - /^[rgba]$/
+
+  # Aligned with rubocop's Metrics/MethodLength (20).
+  TooManyStatements:
+    max_statements: 12
+
+  # Layout and rendering both dispatch over a closed set of node types.
+  TooManyConstants:
+    max_constants: 12
+
+exclude_paths:
+  - test
+  - bench.rb
+
+directories:
+  lib/loomy/dsl:
+    # respond_to_missing?'s signature is Ruby's, not ours.
+    BooleanParameter:
+      enabled: false

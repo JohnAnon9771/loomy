@@ -4,13 +4,9 @@ module Loomy
   module AST
     module Effects
       class Blur < Effect
-        def radius
-          properties[:radius] || 0
-        end
+        def radius = properties[:radius] || 0
 
-        def accept(visitor)
-          visitor.visit_blur_effect(self)
-        end
+        def no_op? = radius <= 0
       end
     end
   end

@@ -5,93 +5,96 @@ require 'minitest/autorun'
 require 'vips'
 require 'fileutils'
 
+# Fixtures under test/assets are committed binaries, not generated at run time:
+# they are the inputs the golden references were produced from, so regenerating
+# them would move every golden. test/fixtures_test.rb pins their contract.
 module TestHelper
-  def self.generate_assets
-    FileUtils.mkdir_p('test/assets')
-    FileUtils.mkdir_p('test/tmp')
+  TMP_DIR = 'test/tmp'
 
-    # Base red image
-    unless File.exist?('test/assets/base.png')
-      Vips::Image.black(500, 500, bands: 3)
-                 .linear([1, 1, 1], [255, 0, 0])
-                 .bandjoin(255)
-                 .cast(:uchar)
-                 .write_to_file('test/assets/base.png')
-    end
+  MISSING_REFERENCE = <<~MSG
+    Reference image not found: %s
 
-    # Blue square
-    unless File.exist?('test/assets/blue_square.png')
-      Vips::Image.black(200, 200, bands: 3)
-                 .linear([1, 1, 1], [0, 0, 255])
-                 .bandjoin(255)
-                 .cast(:uchar)
-                 .write_to_file('test/assets/blue_square.png')
-    end
+    If this is a new golden test, generate the baseline deliberately:
 
-    # Grid for displacement
-    unless File.exist?('test/assets/grid.png')
-      grid = Vips::Image.black(200, 200, bands: 3)
-                        .linear([1, 1, 1], [128, 128, 128])
-                        .bandjoin(255)
-                        .cast(:uchar)
-      grid.write_to_file('test/assets/grid.png')
-    end
+        bundle exec rake test:baseline
 
-    # Displacement map
-    unless File.exist?('test/assets/disp_map.png')
-      Vips::Image.black(200, 200, bands: 1)
-                 .linear([1], [50])
-                 .cast(:uchar)
-                 .write_to_file('test/assets/disp_map.png')
-    end
+    Then inspect the generated PNG before committing it. References are the
+    visual contract of the suite and must never appear as a side effect of an
+    ordinary test run.
+  MSG
 
-    # Large assets for integration
-    unless File.exist?('test/assets/base_large.png')
-      Vips::Image.black(1000, 1000, bands: 3).linear([1, 1, 1],
-                                                     [100, 100,
-                                                      100]).bandjoin(255).cast(:uchar).write_to_file('test/assets/base_large.png')
-    end
+  # Golden images are only exactly reproducible against the libvips build they
+  # were rendered with: resampling kernels and colourspace conversions change
+  # between releases. References here were produced on this version, so tests
+  # stay strict on it and may relax elsewhere -- see assert_image_similar.
+  REFERENCE_LIBVIPS = '8.18'
 
-    return if File.exist?('test/assets/overlay_large.png')
-
-    Vips::Image.black(1000, 1000, bands: 3).linear([1, 1, 1],
-                                                   [200, 200,
-                                                    200]).bandjoin(128).cast(:uchar).write_to_file('test/assets/overlay_large.png')
+  def self.libvips_version
+    "#{Vips.version(0)}.#{Vips.version(1)}"
   end
 
-  def assert_image_similar(expected_path, actual_image, tolerance: 0.1)
-    # If actual_image is a path, load it
-    actual = if actual_image.is_a?(String)
-               Vips::Image.new_from_file(actual_image)
-             else
-               actual_image
-             end
+  def self.reference_libvips?
+    libvips_version == REFERENCE_LIBVIPS
+  end
 
-    unless File.exist?(expected_path)
-      # Auto-generate reference if missing (careful in CI)
+  def self.baseline_mode?
+    ENV['LOOMY_BASELINE'] == '1'
+  end
+
+  def self.setup_tmp_dir
+    FileUtils.mkdir_p(TMP_DIR)
+  end
+
+  # Path for a test to write output into. Never write to the repo root or into
+  # test/assets: both are versioned.
+  def tmp_path(name)
+    FileUtils.mkdir_p(TestHelper::TMP_DIR)
+    File.join(TestHelper::TMP_DIR, name)
+  end
+
+  # `across_libvips` is the tolerance to use when the running libvips is not the
+  # one the references were rendered with. Pass it only for the handful of
+  # operations that genuinely move between releases, and only where a
+  # version-independent assertion in the test itself carries the real weight --
+  # otherwise the golden stops meaning anything.
+  def assert_image_similar(expected_path, actual_image, tolerance: 0.1, across_libvips: nil)
+    tolerance = across_libvips if across_libvips && !TestHelper.reference_libvips?
+    actual = actual_image.is_a?(String) ? Vips::Image.new_from_file(actual_image) : actual_image
+
+    if TestHelper.baseline_mode?
       FileUtils.mkdir_p(File.dirname(expected_path))
       actual.write_to_file(expected_path)
       return
     end
 
+    flunk(format(TestHelper::MISSING_REFERENCE, expected_path)) unless File.exist?(expected_path)
+
     expected = Vips::Image.new_from_file(expected_path)
 
-    # Ensure same size and bands for comparison
     if expected.width != actual.width || expected.height != actual.height
-      flunk "Image dimensions mismatch: expected #{expected.width}x#{expected.height}, got #{actual.width}x#{actual.height}"
+      flunk "Image dimensions mismatch for #{expected_path}: " \
+            "expected #{expected.width}x#{expected.height}, got #{actual.width}x#{actual.height}"
     end
 
-    # Calculate Mean Absolute Error (MAE)
-    # Convert to float to avoid wrap-around in subtraction
+    if expected.bands != actual.bands
+      flunk "Image band count mismatch for #{expected_path}: " \
+            "expected #{expected.bands}, got #{actual.bands}"
+    end
+
+    # Mean Absolute Error. Cast to float first so per-band subtraction cannot
+    # wrap around on uchar data.
     diff = (expected.cast(:float) - actual.cast(:float)).abs.avg
 
-    assert diff <= tolerance, "Image similarity failed. Mean difference: #{diff} (tolerance: #{tolerance})"
+    assert diff <= tolerance,
+           "Image similarity failed for #{expected_path}. Mean difference: #{diff} (tolerance: #{tolerance}). " \
+           "Running libvips #{TestHelper.libvips_version}; references were rendered with " \
+           "#{TestHelper::REFERENCE_LIBVIPS}. A small difference on a different libvips is usually the build, " \
+           'not a regression -- confirm on the reference version before re-baselining.'
   end
 end
 
-TestHelper.generate_assets
+TestHelper.setup_tmp_dir
 
-# Mixin helper to Minitest
 module Minitest
   class Test
     include TestHelper

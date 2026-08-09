@@ -4,17 +4,16 @@ module Loomy
   module AST
     module Effects
       class ColorAdjustment < Effect
-        def brightness
-          properties[:brightness] || 1.0
-        end
+        NEUTRAL = 1.0
 
-        def contrast
-          properties[:contrast] || 1.0
-        end
+        def brightness = properties[:brightness] || NEUTRAL
+        def contrast   = properties[:contrast] || NEUTRAL
 
-        def accept(visitor)
-          visitor.visit_color_adjustment_effect(self)
-        end
+        def no_op? = neutral?(brightness) && neutral?(contrast)
+
+        private
+
+        def neutral?(value) = (value - NEUTRAL).abs < Float::EPSILON
       end
     end
   end

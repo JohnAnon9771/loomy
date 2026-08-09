@@ -3,67 +3,53 @@
 require 'test_helper'
 
 class FeaturesTest < Minitest::Test
-  def setup
-    # Ensure assets are fresh if needed, or use TestHelper assets
-  end
-
-  def teardown
-    # Clean up
-  end
-
   def test_basic_rendering
-    output = 'test_render_basic.png'
+    output = tmp_path('render_basic.png')
+
     Loomy.render(output, size: [800, 600]) do
       layer 'test/assets/base.png'
     end
 
-    assert File.exist?(output)
-    img = Vips::Image.new_from_file(output)
-    assert_equal 800, img.width
-    assert_equal 600, img.height
-    File.delete(output)
+    image = Vips::Image.new_from_file(output)
+
+    assert_equal [800, 600], [image.width, image.height]
   end
 
-  def test_transforms
-    output = 'test_render_transforms.png'
-    # Test resize and position
-    Loomy.render(output, size: [800, 600]) do
-      layer 'test/assets/base.png', width: 800, height: 600 # Implicit fill/stretch if logic implies? No, implementation default is contain?
-      # Wait, default fit is nil -> 'resize' logic above might default to thumbnail which is contain.
-
-      # Explicit test for cover
-      layer 'test/assets/blue_square.png', width: 100, height: 50, fit: :cover, x: 50, y: 50
-
-      # Explicit test for fill/stretch
-      layer 'test/assets/base.png', width: 100, height: 50, fit: :fill, x: 200, y: 50
+  # The default fit contains, so a 500x500 source asked for 800x600 comes out
+  # 600x600 rather than stretched.
+  def test_default_fit_preserves_aspect_ratio
+    image = Loomy.generate(size: [800, 600]) do
+      layer 'test/assets/base.png', width: 800, height: 600
     end
 
-    assert File.exist?(output)
-    File.delete(output)
+    assert_equal 0, image.getpoint(700, 300)[3], 'the contained layer should not reach the right edge'
+  end
+
+  def test_cover_fills_the_requested_box
+    image = Loomy.generate(size: [200, 200]) do
+      layer 'test/assets/blue_square.png', width: 100, height: 50, fit: :cover, x: 0, y: 0
+    end
+
+    assert_equal [0, 0, 255, 255], image.getpoint(99, 49).map(&:to_i)
+    assert_equal 0, image.getpoint(101, 49)[3]
+  end
+
+  def test_fill_stretches_to_the_requested_box
+    image = Loomy.generate(size: [200, 200]) do
+      layer 'test/assets/blue_square.png', width: 100, height: 50, fit: :fill, x: 0, y: 0
+    end
+
+    assert_equal [0, 0, 255, 255], image.getpoint(99, 49).map(&:to_i)
+    assert_equal 0, image.getpoint(99, 51)[3]
   end
 
   def test_blend_modes
-    output = 'test_render_blend.png'
-    Loomy.render(output, size: [500, 500]) do
-      layer 'test/assets/base.png' # Red
+    image = Loomy.generate(size: [500, 500]) do
+      layer 'test/assets/base.png' # red
       layer 'test/assets/blue_square.png', blend: :multiply
     end
 
-    assert File.exist?(output)
-    # Visual check logic would require reading pixel at 0,0 and ensuring it is black (Red * Blue = 0)
-    img = Vips::Image.new_from_file(output)
-
-    # Check pixel at 0,0. Base is Red (255,0,0). Blue is Blue (0,0,255).
-    # Multiply: (255*0)/255 = 0.
-    # Result should be Black (0,0,0) (plus alpha)
-    pixel = img.getpoint(0, 0)
-    # pixel is [r, g, b, a]
-
-    # Tolerance for compression if png? PNG is lossless.
-    assert_equal 0, pixel[0], 'Red channel should be 0'
-    assert_equal 0, pixel[1], 'Green channel should be 0'
-    assert_equal 0, pixel[2], 'Blue channel should be 0'
-
-    File.delete(output)
+    # Red (255,0,0) multiplied by blue (0,0,255) is black on every channel.
+    assert_equal [0, 0, 0], image.getpoint(0, 0).map(&:to_i).first(3)
   end
 end

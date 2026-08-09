@@ -4,13 +4,10 @@ module Loomy
   module AST
     module Effects
       class Displacement < Effect
-        def scale
-          properties[:scale] || 20
-        end
+        def scale = properties[:scale] || 20
+        def map   = properties[:map]
 
-        def accept(visitor)
-          visitor.visit_displacement_effect(self)
-        end
+        def no_op? = scale.zero?
       end
     end
   end

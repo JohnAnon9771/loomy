@@ -1,7 +1,18 @@
 # frozen_string_literal: true
 
 module Loomy
+  # Parses the colour values accepted by the DSL into an RGBA byte quadruple.
+  #
+  #   Color.new('#f00').rgba        #=> [255, 0, 0, 255]
+  #   Color.new('#0000ff80').rgba   #=> [0, 0, 255, 128]
+  #   Color.new([10, 20, 30]).rgba  #=> [10, 20, 30, 255]
+  #
+  # Anything it cannot parse raises InvalidColor.
   class Color
+    HEX = /\A(\h{3}|\h{6}|\h{8})\z/
+    CHANNEL_RANGE = (0..255)
+    OPAQUE = 255
+
     def initialize(value)
       @value = value
     end
@@ -9,9 +20,10 @@ module Loomy
     def rgba
       @rgba ||=
         case @value
-        when String then hex_to_rgba(@value)
+        when Color  then @value.rgba
+        when String then from_hex(@value)
         when Array  then from_array(@value)
-        else [0, 0, 0, 255]
+        else raise InvalidColor, @value
         end
     end
 
@@ -24,20 +36,24 @@ module Loomy
 
     private
 
-    def from_array(array) = array.length == 3 ? array + [255] : array
+    def from_array(array)
+      unless [3, 4].include?(array.length) &&
+             array.all? { |channel| channel.is_a?(Numeric) && CHANNEL_RANGE.cover?(channel) }
+        raise InvalidColor, @value
+      end
 
-    def hex_to_rgba(hex)
-      hex = hex.delete('#')
-      parts =
-        case hex.length
-        when 3 then hex.chars.map { |c| c * 2 }
-        when 6, 8 then hex.scan(/../)
-        else return [0, 0, 0, 255]
-        end
+      channels = array.map(&:to_i)
+      channels.length == 3 ? channels + [OPAQUE] : channels
+    end
 
-      res = parts.map(&:hex)
-      res << 255 if res.length == 3
-      res
+    def from_hex(value)
+      hex = value.delete_prefix('#')
+      raise InvalidColor, @value unless HEX.match?(hex)
+
+      hex = hex.chars.map { |digit| digit * 2 }.join if hex.length == 3
+
+      channels = hex.scan(/../).map(&:hex)
+      channels.length == 3 ? channels + [OPAQUE] : channels
     end
   end
 end
