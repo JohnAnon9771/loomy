@@ -75,6 +75,24 @@ class RegressionTest < Minitest::Test
     end
   end
 
+  # libvips' thumbnail applies the EXIF orientation tag; reading the header does
+  # not. Measuring one and rendering the other left layout holding a frame the
+  # image did not fill.
+  def test_layout_and_render_agree_on_an_exif_rotated_source
+    rotated = 'test/assets/exif_rotated.jpg' # 200x100 of pixels, upright 100x200
+    loader = Loomy::Render::SourceLoader.new
+
+    assert_equal [100, 200], loader.dimensions(rotated)
+
+    canvas = Loomy::DSL::PipelineBuilder.new({}) { layer rotated, width: 50 }.build
+    frames, = Loomy::Layout::Engine.new(loader).call(canvas)
+    frame = frames.values.first
+    image = Loomy.generate { layer rotated, width: 50 }
+
+    assert_equal [frame.width, frame.height], [image.width, image.height]
+    assert_equal [50, 100], [image.width, image.height]
+  end
+
   def test_to_blob_keeps_dpi
     blob = Loomy.to_blob('.png', size: [50, 50], dpi: 150) { layer SOURCE }
 

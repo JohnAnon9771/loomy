@@ -20,6 +20,8 @@ class FixturesTest < Minitest::Test
     # working blur from a missing one.
     'pattern.png' => { size: [200, 200], bands: 4, corner: [30, 0, 90, 255] },
     'pattern_map.png' => { size: [200, 200], bands: 3, corner: [0, 0, 0] },
+    # 200x100 of pixels carrying EXIF orientation 6, so it is 100x200 upright.
+    'exif_rotated.jpg' => { size: [200, 100], bands: 3, orientation: 6 },
     # 500x500, transparent, with a 100x100 opaque red square centred at 200,200.
     'trim_test_source.png' => { size: [500, 500], bands: 4, corner: [0, 0, 0, 0], centre: [255, 0, 0, 255] }
   }.freeze
@@ -34,7 +36,13 @@ class FixturesTest < Minitest::Test
 
       assert_equal spec[:size], [image.width, image.height], "#{name} has the wrong dimensions"
       assert_equal spec[:bands], image.bands, "#{name} has the wrong band count"
-      assert_equal spec[:corner], image.getpoint(0, 0).map(&:to_i), "#{name} has the wrong top-left pixel"
+      if spec[:corner]
+        assert_equal spec[:corner], image.getpoint(0, 0).map(&:to_i), "#{name} has the wrong top-left pixel"
+      end
+
+      if spec[:orientation]
+        assert_equal spec[:orientation], image.get('orientation'), "#{name} has the wrong EXIF orientation"
+      end
 
       return unless spec[:centre]
 

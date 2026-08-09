@@ -15,6 +15,9 @@ module Loomy
 
       TRIM_THRESHOLD = 10
 
+      # EXIF orientation 1 means "already upright".
+      UPRIGHT = 1
+
       SIZING = { contain: :both, cover: :both, stretch: :force }.freeze
 
       # Loaders that can decode straight to a reduced size. For everything else
@@ -25,6 +28,7 @@ module Loomy
 
       def initialize
         @headers = {}
+        @oriented = {}
         @images = {}
         @trims = {}
       end
@@ -32,14 +36,14 @@ module Loomy
       # Natural size, read from the header. libvips is lazy, so this does not
       # decode pixels.
       def dimensions(path)
-        image = header(path)
+        image = oriented(path)
         [image.width, image.height]
       end
 
       # Opaque extent of the image, as [left, top, width, height]. Needs a pixel
       # scan, so the result is cached per render.
       def trim_bounds(path)
-        @trims[path] ||= header(path).find_trim(threshold: TRIM_THRESHOLD)
+        @trims[path] ||= oriented(path).find_trim(threshold: TRIM_THRESHOLD)
       end
 
       def load(path, target = Target.natural)
@@ -69,8 +73,29 @@ module Loomy
         end
       end
 
+      # An EXIF orientation tag is applied once, up front, so that measuring and
+      # rendering agree on how big the source is. libvips' thumbnail applies it
+      # on its own, so measuring the unrotated header while rendering rotated
+      # pixels left layout holding a frame the image did not fill -- a camera
+      # JPEG asked for 50x25 measured 50x25 and rendered 13x25.
+      #
+      # autorot strips the tag once applied, so the thumbnail below cannot
+      # rotate a second time. It is skipped outright for upright sources: it is
+      # a real pipeline stage even when it has nothing to do, and almost every
+      # image is upright.
+      def oriented(path)
+        @oriented[path] ||= begin
+          image = header(path)
+          orientation(image) == UPRIGHT ? image : image.autorot
+        end
+      end
+
+      def orientation(image)
+        image.get_typeof('orientation').zero? ? UPRIGHT : image.get('orientation')
+      end
+
       def read(path, target)
-        image = header(path)
+        image = oriented(path)
         return with_alpha(image) unless target.resize?(image)
 
         if shrink_on_load?(path)
