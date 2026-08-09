@@ -2,7 +2,12 @@
 
 source 'https://rubygems.org'
 
-# Specify your gem's dependencies in loomy.gemspec
+# Runtime dependencies come from the gemspec.
 gemspec
 
-gem 'benchmark-ips'
+group :development, :test do
+  gem 'benchmark-ips', '~> 2.14'
+  gem 'minitest', '~> 6.0'
+  gem 'rake', '~> 13.0'
+  gem 'rubocop', '~> 1.86'
+end

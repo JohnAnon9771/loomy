@@ -1,0 +1,50 @@
+AllCops:
+  TargetRubyVersion: 3.2
+  NewCops: enable
+  Exclude:
+    - 'vendor/**/*'
+    - 'bench/**/*'
+
+# Explanatory comments carry the reasoning behind the geometry and libvips
+# choices; they are the point, not clutter.
+Style/Documentation:
+  Enabled: false
+
+Layout/LineLength:
+  Max: 120
+
+# Tests are linear by design: complexity metrics on them push toward
+# indirection that makes a failure harder to read, not easier.
+Metrics/AbcSize:
+  Max: 20
+  Exclude:
+    - 'test/**/*'
+
+Metrics/MethodLength:
+  Max: 20
+  Exclude:
+    - 'test/**/*'
+
+Metrics/BlockLength:
+  Exclude:
+    - 'test/**/*'
+    - '*.gemspec'
+    - 'bench.rb'
+
+Metrics/ClassLength:
+  Max: 200
+
+# Layout and rendering both dispatch on a small closed set of node types.
+Metrics/CyclomaticComplexity:
+  Max: 10
+
+Metrics/PerceivedComplexity:
+  Max: 10
+
+Metrics/ParameterLists:
+  Max: 6
+
+# dpi_72 and friends name the thing under test.
+Naming/VariableNumber:
+  Exclude:
+    - 'test/**/*'
