@@ -281,10 +281,11 @@ Everything Loomy raises descends from `Loomy::Error`, so one rescue covers it. B
 layer "art.png" do
   aling :center   # Loomy::UnknownProperty — no such property (lists what is available)
   align :top      # Loomy::InvalidValue    — :top belongs to the vertical axis
+  width :fil      # Loomy::InvalidValue    — not a size, so it would have read as undeclared
 end
 ```
 
-`align`, `valign`, `anchor`, `fit`, `trim`, `distribute`, a stack's `direction`, a gradient's `direction` and `relight`'s `type` all have closed vocabularies and say what they expected. `blend:` is the exception, left to libvips, which validates its own enum and lists the valid modes in its message.
+`align`, `valign`, `anchor`, `fit`, `trim`, `distribute`, a stack's `direction`, a gradient's `direction` and `relight`'s `type` all have closed vocabularies and say what they expected. `width` and `height` are checked too, against the three forms in *Sizing and fit* rather than against a list: anything else would have reached layout as *no size at all*, and the node would have taken the parent box. `blend:` is the exception, left to libvips, which validates its own enum and lists the valid modes in its message.
 
 `Loomy::LayoutError` covers geometry that cannot be resolved — a `"50%"` or a `:fill` with no parent box to be relative to.
 

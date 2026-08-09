@@ -29,6 +29,10 @@ Restructure of the rendering pipeline. The public API — `Loomy.render`,
   unknown gradient `direction:` were all accepted and quietly ignored; each now
   raises `InvalidValue` naming what was expected. `blend:` is left to libvips,
   which validates its own enum and already lists the valid modes.
+- `width:` and `height:` are checked too, against a union rather than a list: an
+  Integer of pixels, a percentage String, or `:fill`. `width: :fil` and
+  `width: '50'` used to reach layout as *no size at all*, so the node took the
+  parent box and the mistake looked like it had worked.
 - `AST::Effect#no_op?`, so custom effects take part in pruning. Pruning used to
   dispatch through one hardcoded visitor method per built-in effect.
 - `rake test:baseline` for regenerating golden references deliberately.

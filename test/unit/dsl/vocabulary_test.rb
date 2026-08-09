@@ -53,6 +53,47 @@ class VocabularyTest < Minitest::Test
     assert_match(/top_bottom/, error.message)
   end
 
+  def test_width_rejects_a_misspelled_fill
+    # :fil is not a size, so layout read it as *undeclared* and the layer took
+    # the whole parent box -- the same thing a correct :fill would have done,
+    # which is what made the typo invisible.
+    error = assert_raises(Loomy::InvalidValue) { build { layer solid: '#f00', width: :fil } }
+
+    assert_equal :width, error.property
+    assert_equal :fil, error.value
+    assert_match(/Expected: an Integer of pixels, a percentage String such as "50%", or :fill/, error.message)
+  end
+
+  def test_height_rejects_a_string_that_forgot_its_percent_sign
+    # '50' resolved to nothing: the layer silently took the parent's height
+    # rather than half of it.
+    error = assert_raises(Loomy::InvalidValue) { build { layer solid: '#f00', height: '50' } }
+
+    assert_equal :height, error.property
+  end
+
+  def test_the_block_form_is_checked_for_dimensions_too
+    assert_raises(Loomy::InvalidValue) do
+      build do
+        layer do
+          solid '#f00'
+          width :fil
+        end
+      end
+    end
+  end
+
+  def test_dimensions_are_checked_on_containers
+    assert_raises(Loomy::InvalidValue) { build { group(width: :fil) { layer solid: '#f00' } } }
+    assert_raises(Loomy::InvalidValue) { build { vstack(height: '50') { layer solid: '#f00' } } }
+  end
+
+  def test_dimensions_accept_every_documented_form
+    [10, '50%', '-10%', '12.5%', :fill].each do |dimension|
+      build { layer solid: '#f00', width: dimension, height: dimension }
+    end
+  end
+
   def test_anchor_rejects_a_misspelled_half
     # The half that parses would still have applied; the other would silently
     # fall back to the top-left.
