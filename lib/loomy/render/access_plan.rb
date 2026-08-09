@@ -15,8 +15,9 @@ module Loomy
     #
     #   read twice  the same file behind two layers, or behind a layer and an
     #               effect map, is two passes over one handle
-    #   trim        find_trim is eager: it consumes the whole image during the
-    #               measure pass, and the render then reads it again from the top
+    #   trim        the scan is eager whichever mode it runs in: it consumes the
+    #               whole image during the measure pass, and the render then
+    #               reads it again from the top
     #   displace    mapim indexes its input out of order. libvips buffers enough
     #               lines to absorb a small displacement -- 4200x4800 at scale
     #               500 streams fine, at scale 2000 it runs past the buffer --

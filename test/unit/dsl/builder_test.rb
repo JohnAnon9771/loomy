@@ -126,7 +126,7 @@ class SmartDSLTest < Minitest::Test
       @trimmed = []
     end
 
-    def trim_bounds(path)
+    def trim_bounds(path, _mode = :auto)
       @trimmed << path
       @bounds
     end

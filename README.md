@@ -111,7 +111,7 @@ Loomy.render("output.png", size: [1200, 630]) do
     x :center
     y :center
     width "20%"
-    trim true # Auto-crop transparent borders
+    trim true # Crop away the transparent border
   end
 end
 ```
@@ -171,6 +171,30 @@ layer "art.png", width: :fill      # the whole parent box on that axis
 | `:stretch` | scale each axis independently to hit the box exactly                |
 
 `width: :fill` implies `:stretch` on its own: it names a box, and the layer has to reach it. `fit: :cover` still wins over that, because cropping is what you asked for.
+
+`trim:` crops a source to its content before any of this happens, so the layer measures at the size of what is actually in the file rather than the size of the file:
+
+```ruby
+layer "art.png", trim: true      # by alpha if the source has one, by colour if not
+layer "art.png", trim: :auto     # the same thing, spelled out
+layer "art.png", trim: :alpha    # the extent of the pixels that are not fully transparent
+layer "art.png", trim: :color    # the extent of the pixels that differ from the background colour
+```
+
+`:auto` is the default and what `true` means, so writing it out says the same as leaving it off. The two modes it picks between answer different questions, and neither is the other's approximation:
+
+- `:alpha` ignores colour entirely and reads the alpha channel. It is exact — a single pixel of content counts — and nothing about the colourspace can change the answer. A source with no alpha channel has no transparent border to find, so it is left whole.
+- `:color` is libvips' `find_trim`, which measures distance from a background colour that **defaults to white**. It is the only mode that can trim opaque artwork with a uniform border, and the only one that can miss: a white subject on transparency *is* that background once flattened, so the whole image reads as border and nothing is cropped. Greyscale and CMYK sources miss the same way.
+
+A source with nothing to find — fully transparent, or entirely the background colour — keeps its full size.
+
+`bounds_of` measures the same thing without cropping, for positioning against artwork whose content does not fill its canvas. It takes the same modes, and has to be asked in the mode you crop in:
+
+```ruby
+bounds = bounds_of "art.png", :alpha   # => Loomy::Bounds(x:, y:, width:, height:)
+```
+
+Trimming is a full pixel scan, paid once per source per mode. It is also why a trimmed source cannot be streamed — see *Performance*.
 
 ### 7. Built-in Effects
 

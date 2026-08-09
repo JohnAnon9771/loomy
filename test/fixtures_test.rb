@@ -23,7 +23,12 @@ class FixturesTest < Minitest::Test
     # 200x100 of pixels carrying EXIF orientation 6, so it is 100x200 upright.
     'exif_rotated.jpg' => { size: [200, 100], bands: 3, orientation: 6 },
     # 500x500, transparent, with a 100x100 opaque red square centred at 200,200.
-    'trim_test_source.png' => { size: [500, 500], bands: 4, corner: [0, 0, 0, 0], centre: [255, 0, 0, 255] }
+    'trim_test_source.png' => { size: [500, 500], bands: 4, corner: [0, 0, 0, 0], centre: [255, 0, 0, 255] },
+    # The same shape in white, which is find_trim's default background: the
+    # colour scan reads the whole image as border and finds nothing. Issue #9.
+    'trim_white_on_transparent.png' => {
+      size: [500, 500], bands: 4, corner: [0, 0, 0, 0], centre: [255, 255, 255, 255]
+    }
   }.freeze
 
   FIXTURES.each do |name, spec|

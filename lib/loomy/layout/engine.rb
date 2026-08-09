@@ -90,8 +90,7 @@ module Loomy
       def file_intrinsic(node)
         return @sources.dimensions(node.source) unless node.trim
 
-        _left, _top, trim_width, trim_height = @sources.trim_bounds(node.source)
-        return @sources.dimensions(node.source) unless trim_width.positive? && trim_height.positive?
+        _left, _top, trim_width, trim_height = @sources.trim_bounds(node.source, node.trim)
 
         [trim_width, trim_height]
       end

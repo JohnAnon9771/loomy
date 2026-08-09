@@ -218,9 +218,9 @@ class RegressionTest < Minitest::Test
       @loader.load(path, target)
     end
 
-    def load_trimmed(path, target = Loomy::Render::Target.natural)
+    def load_trimmed(path, target = Loomy::Render::Target.natural, mode = :auto)
       @requested_sizes << [target.width, target.height]
-      @loader.load_trimmed(path, target)
+      @loader.load_trimmed(path, target, mode)
     end
 
     def load_map(path, target) = @loader.load_map(path, target)

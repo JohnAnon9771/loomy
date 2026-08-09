@@ -14,8 +14,6 @@ module Loomy
     # It also owns the access mode, because that is a property of the open
     # handle and this is what opens it.
     class SourceCache
-      TRIM_THRESHOLD = 10
-
       # EXIF orientation 1 means "already upright".
       UPRIGHT = 1
 
@@ -41,10 +39,12 @@ module Loomy
         [image.width, image.height]
       end
 
-      # Opaque extent of the image, as [left, top, width, height]. Needs a pixel
-      # scan, so the result is cached.
-      def trim_bounds(path)
-        @trims[path] ||= oriented(path).find_trim(threshold: TRIM_THRESHOLD)
+      # Content extent of the image, as [left, top, width, height]. Needs a
+      # pixel scan, so the result is cached -- per mode as well as per path,
+      # since the same source can be asked both ways in one composition and the
+      # two modes are two different scans with two different answers.
+      def trim_bounds(path, mode = :auto)
+        @trims[[path, mode]] ||= Trimmer.bounds(oriented(path), mode)
       end
 
       # Which libvips loader handles this file, or nil if it will not say.

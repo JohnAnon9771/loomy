@@ -29,7 +29,7 @@ module Loomy
         align: ALIGN,
         valign: VALIGN,
         fit: FIT,
-        trim: [true, false],
+        trim: [true, false, *Render::Trimmer::MODES],
         distribute: AST::Stack::DISTRIBUTIONS,
         direction: AST::Stack::DIRECTIONS
       }.freeze
