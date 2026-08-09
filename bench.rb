@@ -52,6 +52,46 @@ def materialize(image)
   image.write_to_memory
 end
 
+def rss_mb = `ps -o rss= -p #{Process.pid}`.to_i / 1024.0
+
+# Streaming a source instead of decoding it whole is a memory win, not a speed
+# one, so none of the throughput numbers below can see it. That is exactly why
+# it went unmeasured: this file only ever reported img/s.
+#
+# The two scenarios render the same thing by the two public routes. `render`
+# writes the image once and drops it, so sources the tree reads once are
+# streamed; `generate` hands the image back for the caller to read whenever it
+# likes, so nothing is.
+RSS_SCENARIOS = {
+  'streamed' => lambda {
+    Loomy.render(asset('out_rss.png'), size: [4200, 4800]) do
+      layer BASE_LARGE
+      layer OVERLAY_LARGE, x: 500, y: 500
+    end
+  },
+  'whole' => lambda {
+    image = Loomy.generate(size: [4200, 4800]) do
+      layer BASE_LARGE
+      layer OVERLAY_LARGE, x: 500, y: 500
+    end
+    image.write_to_file(asset('out_rss.png'))
+  }
+}.freeze
+
+# Each scenario is measured in its own process. RSS is a high-water mark that
+# never comes back down, so one measured after another has already peaked
+# reports no growth at all.
+if ARGV.first == '--rss'
+  before = rss_mb
+  peak = before
+  5.times do
+    RSS_SCENARIOS.fetch(ARGV[1]).call
+    peak = [peak, rss_mb].max
+  end
+  print format('%.0f', peak - before)
+  exit
+end
+
 puts
 puts "ruby #{RUBY_VERSION} / libvips #{Vips.version(0)}.#{Vips.version(1)}.#{Vips.version(2)}"
 puts
@@ -135,4 +175,13 @@ Benchmark.ips do |x|
   end
 
   x.compare!
+end
+
+puts
+puts '== Peak memory (2 layers, 4200x4800, 5 renders per process) =='
+
+RSS_SCENARIOS.each_key do |scenario|
+  growth = `#{RbConfig.ruby} #{__FILE__} --rss #{scenario}`
+
+  puts format('  %<scenario>-24s RSS +%<growth>s MB', scenario: scenario, growth: growth)
 end

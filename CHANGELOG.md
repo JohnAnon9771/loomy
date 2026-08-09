@@ -56,6 +56,16 @@ Restructure of the rendering pipeline. The public API — `Loomy.render`,
   a hex string no longer renders as a plausible-looking result.
 - `required_ruby_version` is now `>= 3.2.0`. `Data.define` has been in use since
   before this release, so `>= 3.0.0` could never have worked.
+- Effect processors registered with `Loomy.register_effect` take a third
+  argument, the render's source loader, so an effect that reads a map from disk
+  goes through the same cache and orientation handling as everything else.
+- `render` and `to_blob` stream the sources they can prove are read once, top to
+  bottom, instead of decoding them whole. Two layers over a 4200x4800 source
+  grow RSS by +69 MB instead of +142 MB. A source is only streamed when the
+  tree says it is read exactly once and carries neither `trim:` nor a
+  displacement; anything else keeps random access, because a streamed source
+  read a second time fails outright. `generate` hands the image back for the
+  caller to read as often as it likes, so it streams nothing.
 
 ### Fixed
 
@@ -68,6 +78,15 @@ Restructure of the rendering pipeline. The public API — `Loomy.render`,
   apply it. A camera JPEG asked for 50x25 measured 50x25 and rendered 13x25.
   Orientation is now applied once, up front, and skipped for upright sources so
   it costs nothing in the common case.
+- `bounds_of` opened the image itself instead of going through the loader, so it
+  reported the frame the file is stored in while the render used the upright
+  one: a 200x100 JPEG carrying orientation 6 answered 200x100 at (0,0) against a
+  rendered 100x200. It also spelled its own trim threshold next to
+  `SourceLoader::TRIM_THRESHOLD` and re-ran `find_trim` outside the per-render
+  cache. It now measures through the loader, and accepts a `Pathname`.
+- Displacement and lighting maps were read with a bare `Vips::Image` open, so a
+  map used by two effects was decoded twice and an orientation tag on one was
+  ignored.
 - `fit: :contain`, the explicit spelling of the default, did not behave like the
   default: it took the "be exactly this box" path, so a layer's frame could
   claim 200x200 while the image was 175x200 and anything aligned against it

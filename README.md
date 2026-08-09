@@ -205,6 +205,20 @@ Reproduce them yourself — the benchmark is in the repository, and the numbers 
 
 > An earlier version of this table reported "~70 img/s simple" and "~60 img/s complex (5+ layers + effects)". The benchmark behind those numbers passed `blur:` and `grayscale:` as keyword arguments, which are not how effects are declared — they landed in the property hash and were ignored, so the "with effects" figure was measured with no effects applied.
 
+**Peak memory**
+
+`render` and `to_blob` write the image once and drop it, so a source the tree
+reads exactly once can be streamed rather than decoded whole. Two layers over a
+4200×4800 source grow RSS by **+69 MB** across five renders in one process,
+against **+142 MB** for the same image built with `generate` and written by
+hand. It costs nothing in throughput, which is why the table above cannot see
+it — `bundle exec ruby bench.rb` reports both.
+
+A source keeps random access when it is read more than once — behind two layers,
+or behind a layer and an effect map — or when it carries `trim:` or sits under a
+`displace`. `generate` hands the image back for you to read whenever and however
+often you like, so it streams nothing.
+
 ## 🗺 Roadmap
 
 - [x] Percentage geometry (`width: "50%"`), resolved against the parent box

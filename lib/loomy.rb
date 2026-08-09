@@ -26,24 +26,21 @@ module Loomy
   loader.setup
 
   class << self
-    # One loader per render, built before the block is evaluated: `bounds_of`
-    # measures a source while the DSL is still running, and has to see the same
-    # orientation, threshold and cache the render will.
+    # Hands the image back lazily, so the caller decides when and how often to
+    # read it. Every source therefore stays on random access.
     def generate(**options, &)
-      loader = Render::SourceLoader.new
-      canvas = DSL::PipelineBuilder.new(loader, options, &).build
-      canvas = AST::Pruner.new(canvas).call
+      canvas, loader = compose(options, &)
 
       Render::Pipeline.new(canvas, loader).call
     end
 
     def render(output_path, **options, &)
-      image = generate(**canvas_options(options), &)
+      image = single_pass(canvas_options(options), &)
       image.write_to_file(output_path, **write_options(options))
     end
 
     def to_blob(format, **options, &)
-      image = generate(**canvas_options(options), &)
+      image = single_pass(canvas_options(options), &)
       image.write_to_buffer(format, **write_options(options))
     end
 
@@ -64,6 +61,27 @@ module Loomy
     end
 
     private
+
+    # One loader per render, built before the block is evaluated: `bounds_of`
+    # measures a source while the DSL is still running, and has to see the same
+    # orientation, threshold and cache the render will.
+    def compose(options, &)
+      loader = Render::SourceLoader.new
+      canvas = DSL::PipelineBuilder.new(loader, options, &).build
+
+      [AST::Pruner.new(canvas).call, loader]
+    end
+
+    # The image is written once and dropped, so the sources the tree reads once
+    # can be streamed rather than decoded whole. That is the whole memory
+    # difference between this and `generate`, whose result the caller may read
+    # any number of times.
+    def single_pass(options, &)
+      canvas, loader = compose(options, &)
+      loader.allow_streaming(Render::AccessPlan.streamable(canvas))
+
+      Render::Pipeline.new(canvas, loader).call
+    end
 
     def canvas_options(options)
       options.slice(*CANVAS_OPTIONS)

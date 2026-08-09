@@ -62,6 +62,45 @@ class RegressionTest < Minitest::Test
     assert_kind_of Class, Loomy::Bounds
     assert_kind_of Class, Loomy::Layout::Engine
     assert_kind_of Class, Loomy::Render::SourceLoader
+    assert_kind_of Class, Loomy::Render::AccessPlan
+  end
+
+  # Streaming a source is a single downward pass. Every one of these reads a
+  # source twice, and each failed with `vipspng: out of order read` while the
+  # renderer streamed by default rather than on proof it was safe to.
+  def test_a_trimmed_source_survives_the_render_path
+    Loomy.to_blob('.png', size: [200, 200]) do
+      layer 'test/assets/trim_test_source.png', trim: true
+    end
+  end
+
+  def test_the_same_source_behind_two_layers_survives_the_render_path
+    Loomy.to_blob('.png', size: [200, 200]) do
+      layer SOURCE
+      layer SOURCE, x: 10
+    end
+  end
+
+  # Loomy.generate hands back a lazy image; the caller decides how often to read
+  # it, so nothing it depends on may be a one-shot read.
+  def test_a_generated_image_can_be_read_more_than_once
+    image = Loomy.generate(size: [100, 100]) { layer SOURCE }
+
+    image.avg
+
+    assert_equal [100, 100], [image.width, image.height]
+    refute_empty image.write_to_memory
+  end
+
+  # bounds_of opens the source during DSL evaluation, before there is a pruned
+  # tree to plan against. Its scan plus the render's read is two passes.
+  def test_a_source_measured_by_bounds_of_survives_being_rendered
+    source = 'test/assets/trim_test_source.png'
+
+    Loomy.to_blob('.png', size: [200, 200]) do
+      bounds_of source
+      layer source
+    end
   end
 
   # Anything the DSL accepts must reach the output, or be rejected outright.
@@ -185,5 +224,6 @@ class RegressionTest < Minitest::Test
     def dimensions(path) = @loader.dimensions(path)
     def trim_bounds(path) = @loader.trim_bounds(path)
     def load_map(path, target) = @loader.load_map(path, target)
+    def allow_streaming(paths) = @loader.allow_streaming(paths)
   end
 end
