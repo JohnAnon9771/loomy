@@ -150,7 +150,45 @@ Loomy.render("card.png", size: [400, 600]) do
 end
 ```
 
-### 6. Custom Effects & Registry
+### 6. Sizing and fit
+
+`width:` and `height:` take pixels, a percentage of the parent box, or `:fill`:
+
+```ruby
+layer "art.png", width: 200        # pixels
+layer "art.png", width: "50%"      # half the parent box
+layer "art.png", width: :fill      # the whole parent box on that axis
+```
+
+`"50%"` and `:fill` are both relative to the parent, so both need a parent with a resolvable box on that axis. Without one — a layer or group directly under a canvas that was given no `size:` — they raise `Loomy::LayoutError` rather than guess. `:fill` works on groups and stacks too, not just layers.
+
+`fit:` says how a source reaches the box it was given:
+
+| `fit:`     |                                                                    |
+| :--------- | :----------------------------------------------------------------- |
+| `:contain` | scale to fit inside the box, preserving aspect ratio (the default)  |
+| `:cover`   | scale until it covers the box and crop the overflow                 |
+| `:stretch` | scale each axis independently to hit the box exactly                |
+
+`width: :fill` implies `:stretch` on its own: it names a box, and the layer has to reach it. `fit: :cover` still wins over that, because cropping is what you asked for.
+
+### 7. Built-in Effects
+
+Every effect below is declared inside a layer, group or stack block, and applies in declaration order.
+
+| Effect                                   | Neutral                | |
+| :--------------------------------------- | :--------------------- | :--- |
+| `blur radius: 10`                        | `0`                    | Gaussian blur. |
+| `grayscale`                              | —                      | Desaturates the colour bands; alpha is untouched. |
+| `adjust_color brightness: 1.2, contrast: 0.9` | `1.0` each        | `contrast` expands around mid-grey, which is the one value it cannot move; `brightness` multiplies what comes out of that. |
+| `displace map: "m.png", scale: 20`       | `scale: 0`             | Warps the image by up to `scale` pixels. A mid-grey map pixel means no displacement; the map's first band drives x and its second y. |
+| `relight map: "m.png", type: :soft, strength: 1.0` | `strength: 0` | Washes the map over the image as light. `type:` is `:soft` or `:hard`. |
+
+`relight`'s `strength` scales the map around mid-grey, which both blends leave alone: below `1` softens the light, above `1` hardens it, a negative value inverts it — highlight becomes shadow — and exactly `0` drops the effect.
+
+An effect that cannot change a pixel is dropped before any pixel work happens, so `blur radius: 0` costs nothing.
+
+### 8. Custom Effects & Registry
 
 Define an effect node and register a processor for it:
 
@@ -246,7 +284,9 @@ layer "art.png" do
 end
 ```
 
-`align`, `valign`, `anchor`, `fit`, `trim`, `distribute`, a stack's `direction` and a gradient's `direction` all have closed vocabularies and say what they expected. `blend:` is left to libvips, which validates its own enum and lists the valid modes in its message.
+`align`, `valign`, `anchor`, `fit`, `trim`, `distribute`, a stack's `direction`, a gradient's `direction` and `relight`'s `type` all have closed vocabularies and say what they expected. `blend:` is the exception, left to libvips, which validates its own enum and lists the valid modes in its message.
+
+`Loomy::LayoutError` covers geometry that cannot be resolved — a `"50%"` or a `:fill` with no parent box to be relative to.
 
 ## 🧪 Development
 
