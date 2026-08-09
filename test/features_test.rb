@@ -34,9 +34,9 @@ class FeaturesTest < Minitest::Test
     assert_equal 0, image.getpoint(101, 49)[3]
   end
 
-  def test_fill_stretches_to_the_requested_box
+  def test_stretch_fit_hits_the_requested_box_exactly
     image = Loomy.generate(size: [200, 200]) do
-      layer 'test/assets/blue_square.png', width: 100, height: 50, fit: :fill, x: 0, y: 0
+      layer 'test/assets/blue_square.png', width: 100, height: 50, fit: :stretch, x: 0, y: 0
     end
 
     assert_equal [0, 0, 255, 255], image.getpoint(99, 49).map(&:to_i)

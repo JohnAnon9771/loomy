@@ -70,12 +70,17 @@ module Loomy
       end
 
       # Layout committed to frame.width x frame.height, so the loader has to hit
-      # it exactly whenever the declaration asked for a specific box. Under
-      # :contain the frame is *derived* from the aspect ratio, so containing into
-      # it reproduces it.
+      # it exactly whenever the declaration asked for a specific box. Two
+      # unrelated declarations ask for one: `fit: :stretch`, and `width:`/
+      # `height: :fill`, which names the parent's box without saying how to
+      # reach it. Under :contain the frame is *derived* from the aspect ratio,
+      # so containing into it reproduces it.
+      #
+      # The order matters: `fit: :cover` wins over a filled axis, because
+      # cropping is what was asked for.
       def load_fit(node)
         return :cover if node.fit == :cover
-        return :stretch if node.fit == :fill || node.width == :fill || node.height == :fill
+        return :stretch if node.fit == :stretch || node.width == :fill || node.height == :fill
 
         :contain
       end

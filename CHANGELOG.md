@@ -9,7 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Restructure of the rendering pipeline. The public API — `Loomy.render`,
 `Loomy.generate`, `Loomy.to_blob`, `Loomy.define_style`, `Loomy.register_effect`
-— is unchanged, and every golden reference image renders pixel-identically.
+— is unchanged. Every golden reference image renders pixel-identically except
+`mockup_result.png`, which moves with the `contrast:` fix under Changed.
 
 ### Added
 
@@ -36,6 +37,14 @@ Restructure of the rendering pipeline. The public API — `Loomy.render`,
   fire on this codebase's shape and documents why; the rest stay on.
 - `Render::Target`, the size and fit a source has to be loaded at, replacing a
   `(width, height, fit)` trio threaded through five SourceLoader methods.
+- `relight` takes `type: :soft` or `type: :hard`, checked against that
+  vocabulary. This is the opposite case to `blend:`: Loomy owns these names and
+  maps them onto a blend mode, so libvips never sees the one you wrote and
+  cannot list the valid ones. Unchecked, an unknown type surfaced as a bare
+  `KeyError` from inside the processor, half-way through a render.
+- `adjust_color` and `relight` name the keyword arguments they accept, as `blur`
+  already did, so `relight map: "m.png", strenght: 2` raises instead of being
+  dropped into the property hash and ignored.
 
 ### Changed
 
@@ -66,6 +75,25 @@ Restructure of the rendering pipeline. The public API — `Loomy.render`,
   displacement; anything else keeps random access, because a streamed source
   read a second time fails outright. `generate` hands the image back for the
   caller to read as often as it likes, so it streams nothing.
+- `contrast:` pivots around mid-grey instead of being a second brightness. The
+  two factors were folded into one gain — `linear([contrast * brightness], [0])`
+  — so `contrast: 2.0` rendered exactly like `brightness: 2.0`, and
+  `contrast: 0.5, brightness: 2.0` rendered exactly like no effect at all.
+  `ColorAdjustment#no_op?` was conservative under the old maths and is exact
+  under the new one. `mockup_result.png` moves with this.
+- `relight`'s `strength:` scales the map towards mid-grey instead of being read
+  by nothing but the pruner. Both blends leave a pixel alone where the map is
+  mid-grey, so a flatter map is a weaker light; `strength: 1` renders
+  byte-identically to before and `lighting.png` is unchanged.
+- `Lighting#no_op?` is `strength.zero?`, matching `Displacement#no_op?`. It was
+  `strength <= 0`, which now would prune a working effect: with the map scaled,
+  a negative strength inverts the light rather than switching it off.
+- `fit: :fill` is now `fit: :stretch`. `:fill` named two unrelated things in the
+  same DSL — stretch to the declared box (`fit:`) and take the parent's box
+  (`width:`/`height:`) — and the renderer collapsed both into `:stretch` on the
+  way to the loader, so the unambiguous name already existed one layer down. The
+  three fits are spelled the same in the DSL and in `Render::Target` now. There
+  is no alias: `fit: :fill` raises `InvalidValue` listing the three.
 
 ### Fixed
 
@@ -99,6 +127,31 @@ Restructure of the rendering pipeline. The public API — `Loomy.render`,
   on every run. Fixtures are committed; `test/fixtures_test.rb` pins them.
 - `assert_image_similar` created a golden reference when one was missing, so a
   new visual test could never fail on its first run.
+- Effects treated alpha as one more colour band. `adjust_color brightness: 2.0`
+  multiplied it too, so a half-opaque layer came back fully opaque (128 → 256,
+  clipped to 255). `relight` composited the map straight over the image and took
+  the map's opacity with it: a `#3366cc80` group came back `[14, 20, 37, 255]`
+  instead of `[51, 102, 204, 128]`, and a group's empty margin came back painted
+  flat grey.
+- `relight` changed the picture even where its map was neutral, on anything
+  translucent: compositing an opaque map over a translucent pixel leaves
+  `(1-ab)·Cs` of the map's own colour behind. With alpha split off, a mid-grey
+  map is an exact identity — which is what lets `strength` mean what it says.
+- `adjust_color` was the only built-in that changed the band format, handing
+  back `float` where it was given `uchar`. Values above 255 survived into the
+  next composite and behaved as super-white there.
+- `width: :fill` with no parent box to fill invented one. On a canvas with no
+  `size:` the root box is `[nil, nil]`, and only percentages checked for that:
+  `layer solid: "#f00", width: :fill, height: 50` rendered a 1x50 sliver,
+  `width: :fill, height: :fill` rendered 1x1, and a file layer quietly came out
+  at its own size. `:fill` is relative to the parent exactly as `"50%"` is, so it
+  raises the same `LayoutError` naming the axis it could not resolve.
+- `width: :fill` on a group or stack raised `TypeError: :fill can't be coerced
+  into Integer` instead of filling. Only layers ever interpreted the sentinel; a
+  container passed it through as the box its children measured against, so a
+  percentage inside one failed with `NoMethodError: undefined method '*' for an
+  instance of Symbol`. Both `group` and `vstack`/`hstack` expose `width:` and
+  `height:`, so this was reachable from the documented DSL.
 
 ### Removed
 
@@ -109,6 +162,8 @@ Restructure of the rendering pipeline. The public API — `Loomy.render`,
 - `template`, `mask` and `artwork` on the canvas. They set a `role:` property
   that nothing read, making them aliases for `layer`.
 - Unused accessors: `Layer#gravity`, `Effect#map_source`.
+- `Lighting#type`'s `:ambient` default, which matched no blend mode and was read
+  by nothing.
 
 ## [0.0.1]
 

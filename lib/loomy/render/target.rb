@@ -6,8 +6,13 @@ module Loomy
     # to get there.
     #
     #   :contain  scale to fit inside it, preserving aspect ratio (default)
-    #   :cover    scale to fill it and crop the overflow
+    #   :cover    scale until it covers it and crop the overflow
     #   :stretch  scale each axis independently to hit it exactly
+    #
+    # These are the same three names the DSL spells as `fit:`. Layout passes a
+    # layer's `fit:` straight through, and reaches for :stretch on its own when
+    # `width:` or `height:` was :fill -- that names a box without saying how to
+    # reach it.
     #
     # Layout has already worked out which of these produces the frame it
     # recorded, so the loader only has to carry it out.

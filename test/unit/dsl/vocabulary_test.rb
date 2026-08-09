@@ -94,6 +94,18 @@ class VocabularyTest < Minitest::Test
     assert_match(/VipsBlendMode/, error.message)
   end
 
+  # The opposite case to blend: Loomy owns this vocabulary and maps it onto a
+  # blend mode, so libvips never sees the name and cannot name the valid ones.
+  # Unchecked, an unknown type reached the processor as a bare KeyError.
+  def test_relight_type_is_checked_here
+    error = assert_raises(Loomy::InvalidValue) do
+      build { layer('test/assets/base.png') { relight map: 'test/assets/grid.png', type: :glow } }
+    end
+
+    assert_equal :type, error.property
+    assert_match(/Expected: :soft, :hard/, error.message)
+  end
+
   private
 
   def build(&)
