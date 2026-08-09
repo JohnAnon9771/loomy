@@ -17,17 +17,21 @@ class SourceLoaderTest < Minitest::Test
   def test_caches_by_path_and_target_size
     raw = @loader.load(BASE)
     raw_again = @loader.load(BASE)
-    resized = @loader.load(BASE, width: 100, height: 100)
+    resized = @loader.load(BASE, target(100, 100))
 
     assert_same raw, raw_again
     refute_same raw, resized
-    assert_same resized, @loader.load(BASE, width: 100, height: 100)
+    assert_same resized, @loader.load(BASE, target(100, 100))
   end
 
   def test_loads_at_the_requested_size
-    image = @loader.load(BASE, width: 120, height: 120)
+    image = @loader.load(BASE, target(120, 120))
 
     assert_equal [120, 120], [image.width, image.height]
+  end
+
+  def target(width, height, fit: :contain)
+    Loomy::Render::Target.new(width: width, height: height, fit: fit)
   end
 
   def test_missing_source_raises_a_loomy_error
@@ -42,7 +46,7 @@ class SourceLoaderTest < Minitest::Test
 
   def test_trimmed_load_crops_then_scales_to_the_target
     # Cropping at full resolution and scaling after gives the exact target.
-    image = @loader.load_trimmed(TRIMMABLE, width: 50, height: 50)
+    image = @loader.load_trimmed(TRIMMABLE, target(50, 50))
 
     assert_equal [50, 50], [image.width, image.height]
     assert_equal [255, 0, 0, 255], image.getpoint(25, 25).map(&:to_i)
@@ -63,7 +67,7 @@ class SourceLoaderTest < Minitest::Test
   end
 
   def test_both_load_strategies_agree
-    ours = @loader.load(BASE, width: 137, height: 137)
+    ours = @loader.load(BASE, target(137, 137))
     shrink_on_load = Vips::Image.thumbnail(BASE, 137, height: 137, size: :both)
 
     assert_equal [shrink_on_load.width, shrink_on_load.height], [ours.width, ours.height]

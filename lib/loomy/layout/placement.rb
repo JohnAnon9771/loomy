@@ -6,6 +6,12 @@ module Loomy
     #
     # This is the whole of Loomy's positioning vocabulary, in one place.
     module Placement
+      # The two axes name the same three positions differently. Keeping the
+      # vocabularies separate is deliberate: `align: :top` stays meaningless
+      # rather than quietly working.
+      HORIZONTAL = { left: :near, center: :centre, right: :far }.freeze
+      VERTICAL   = { top: :near, middle: :centre, bottom: :far }.freeze
+
       # `anchor:` is a compound like :bottom_right or :middle_center. The two
       # halves are independent and either may be absent.
       HORIZONTAL_ANCHOR = /right|center/
@@ -30,18 +36,20 @@ module Loomy
       end
 
       def horizontal(align, width, box_width, offset)
-        case align
-        when :center then ((box_width - width) / 2) + offset
-        when :right  then box_width - width - offset
-        when :left   then offset
-        end
+        along(HORIZONTAL[align], width, box_width, offset)
       end
 
       def vertical(valign, height, box_height, offset)
-        case valign
-        when :middle then ((box_height - height) / 2) + offset
-        when :bottom then box_height - height - offset
-        when :top    then offset
+        along(VERTICAL[valign], height, box_height, offset)
+      end
+
+      # The arithmetic both axes share. nil for an unrecognised placement, which
+      # leaves the caller on the node's declared coordinate.
+      def along(placement, length, box_length, offset)
+        case placement
+        when :near   then offset
+        when :centre then ((box_length - length) / 2) + offset
+        when :far    then box_length - length - offset
         end
       end
 

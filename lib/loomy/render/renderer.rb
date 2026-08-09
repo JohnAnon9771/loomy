@@ -64,13 +64,9 @@ module Loomy
       end
 
       def file_image(node, frame)
-        fit = load_fit(node)
+        target = Target.new(width: frame.width, height: frame.height, fit: load_fit(node))
 
-        if node.trim
-          @loader.load_trimmed(node.source, width: frame.width, height: frame.height, fit: fit)
-        else
-          @loader.load(node.source, width: frame.width, height: frame.height, fit: fit)
-        end
+        node.trim ? @loader.load_trimmed(node.source, target) : @loader.load(node.source, target)
       end
 
       # Layout committed to frame.width x frame.height, so the loader has to hit

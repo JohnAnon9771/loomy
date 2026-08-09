@@ -21,4 +21,22 @@ namespace :test do
   end
 end
 
+# Score floor for the code-smell analysis. A ratchet, not an aspiration: it sits
+# just under the current score so a real regression fails while ordinary
+# variation does not. Raise it when the score rises, never lower it to make a
+# build pass.
+MINIMUM_CRITIC_SCORE = 90
+
+desc 'Analyse code smells and open the HTML report'
+task :critic do
+  sh "bundle exec rubycritic lib --minimum-score #{MINIMUM_CRITIC_SCORE}"
+end
+
+namespace :critic do
+  desc 'Analyse code smells and print to the terminal (no browser)'
+  task :console do
+    sh "bundle exec rubycritic lib --no-browser --format console --minimum-score #{MINIMUM_CRITIC_SCORE}"
+  end
+end
+
 task default: :test

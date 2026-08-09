@@ -24,6 +24,11 @@ Restructure of the rendering pipeline. The public API — `Loomy.render`,
 - `AST::Effect#no_op?`, so custom effects take part in pruning. Pruning used to
   dispatch through one hardcoded visitor method per built-in effect.
 - `rake test:baseline` for regenerating golden references deliberately.
+- RubyCritic code-smell analysis (`rake critic`, `rake critic:console`), wired
+  into CI behind a score floor. `.reek.yml` disables the detectors that only
+  fire on this codebase's shape and documents why; the rest stay on.
+- `Render::Target`, the size and fit a source has to be loaded at, replacing a
+  `(width, height, fit)` trio threaded through five SourceLoader methods.
 
 ### Changed
 

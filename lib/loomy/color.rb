@@ -38,7 +38,7 @@ module Loomy
 
     def from_array(array)
       unless [3, 4].include?(array.length) &&
-             array.all? { |c| c.is_a?(Numeric) && CHANNEL_RANGE.cover?(c) }
+             array.all? { |channel| channel.is_a?(Numeric) && CHANNEL_RANGE.cover?(channel) }
         raise InvalidColor, @value
       end
 
@@ -50,7 +50,7 @@ module Loomy
       hex = value.delete_prefix('#')
       raise InvalidColor, @value unless HEX.match?(hex)
 
-      hex = hex.chars.map { |c| c * 2 }.join if hex.length == 3
+      hex = hex.chars.map { |digit| digit * 2 }.join if hex.length == 3
 
       channels = hex.scan(/../).map(&:hex)
       channels.length == 3 ? channels + [OPAQUE] : channels

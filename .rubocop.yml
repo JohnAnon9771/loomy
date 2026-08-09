@@ -4,6 +4,7 @@ AllCops:
   Exclude:
     - 'vendor/**/*'
     - 'bench/**/*'
+    - 'tmp/**/*'
 
 # Explanatory comments carry the reasoning behind the geometry and libvips
 # choices; they are the point, not clutter.

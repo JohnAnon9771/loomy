@@ -208,6 +208,40 @@ Reproduce them yourself — the benchmark is in the repository, and the numbers 
 - `Loomy.styles` and `Loomy.effects` are process-global; registration is not
   thread-safe, so register at boot rather than per-request.
 
+## 🧪 Development
+
+```bash
+bundle exec rake test
+```
+
+```bash
+bundle exec rubocop
+```
+
+Code smells, via [RubyCritic](https://github.com/whitesmith/rubycritic) (Reek + Flay + Flog + churn). `rake critic` opens an HTML report; `rake critic:console` prints to the terminal and is what CI runs. Both fail below a score floor set in the `Rakefile` — treat it as a ratchet: raise it when the score rises, never lower it to make a build pass.
+
+```bash
+bundle exec rake critic
+```
+
+Reek's defaults assume object-heavy application code, and Loomy is a pipeline of passes plus small value objects. `.reek.yml` turns off the detectors that only ever fire on that shape (`UtilityFunction`, `FeatureEnvy`, `DuplicateMethodCall`, `NilCheck`, `IrresponsibleModule`) and says why, in the file. Everything that pointed at something real is still on.
+
+The analysis tools live in their own bundle group, so the test matrix does not install them:
+
+```bash
+BUNDLE_WITHOUT=lint bundle install
+```
+
+Golden reference images are only exactly reproducible on the libvips build they were rendered with (recorded in `test/test_helper.rb`). To regenerate them deliberately:
+
+```bash
+bundle exec rake test:baseline
+```
+
+### Known rough edge
+
+`Layout::Engine` carries all of the geometry and RubyCritic flags it for size — 24 methods, and a `[node, box]` parameter pair threaded through eight of them. Splitting measure from arrange is awkward because they are mutually recursive (measuring a container arranges its children), so it wants its own change rather than a drive-by.
+
 ## 📄 License
 
 The gem is available as open source under the terms of the [MIT License](https://opensource.org/licenses/MIT).

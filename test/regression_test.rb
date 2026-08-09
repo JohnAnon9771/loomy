@@ -126,14 +126,14 @@ class RegressionTest < Minitest::Test
       @requested_sizes = []
     end
 
-    def load(path, width: nil, height: nil, fit: :contain)
-      @requested_sizes << [width, height]
-      @loader.load(path, width: width, height: height, fit: fit)
+    def load(path, target = Loomy::Render::Target.natural)
+      @requested_sizes << [target.width, target.height]
+      @loader.load(path, target)
     end
 
-    def load_trimmed(path, **options)
-      @requested_sizes << [options[:width], options[:height]]
-      @loader.load_trimmed(path, **options)
+    def load_trimmed(path, target = Loomy::Render::Target.natural)
+      @requested_sizes << [target.width, target.height]
+      @loader.load_trimmed(path, target)
     end
 
     def dimensions(path) = @loader.dimensions(path)

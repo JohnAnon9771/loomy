@@ -8,6 +8,9 @@
 test/tmp/
 bench/tmp/
 
+# RubyCritic report output.
+tmp/
+
 # A library does not commit its lockfile: each supported Ruby resolves its own
 # compatible set.
 /.bundle/

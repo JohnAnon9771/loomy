@@ -65,7 +65,7 @@ module Loomy
     end
 
     def write_options(options)
-      options.except(*CANVAS_OPTIONS).transform_keys { |k| WRITE_OPTION_ALIASES.fetch(k, k) }
+      options.except(*CANVAS_OPTIONS).transform_keys { |key| WRITE_OPTION_ALIASES.fetch(key, key) }
     end
   end
 end

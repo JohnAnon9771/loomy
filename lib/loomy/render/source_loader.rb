@@ -5,7 +5,8 @@ module Loomy
     # Opens image sources and caches them for the duration of one render.
     #
     # Layout asks it for dimensions and trim bounds while measuring; the
-    # renderer then asks for the pixels at the exact size layout settled on.
+    # renderer then asks for the pixels at the exact size layout settled on,
+    # described by a Target.
     class SourceLoader
       # libvips needs a number for the axis the caller did not constrain. This
       # doubles as a ceiling: a source taller than this on the free axis gets
@@ -13,6 +14,8 @@ module Loomy
       NO_LIMIT = 10_000
 
       TRIM_THRESHOLD = 10
+
+      SIZING = { contain: :both, cover: :both, stretch: :force }.freeze
 
       # Loaders that can decode straight to a reduced size. For everything else
       # `thumbnail(path, ...)` decodes in full anyway and then costs ~2x more
@@ -39,32 +42,20 @@ module Loomy
         @trims[path] ||= header(path).find_trim(threshold: TRIM_THRESHOLD)
       end
 
-      # How to reach the requested size:
-      #
-      #   :contain  scale to fit inside it, preserving aspect ratio (default)
-      #   :cover    scale to fill it and crop the overflow
-      #   :stretch  scale each axis independently to hit it exactly
-      #
-      # Layout has already worked out which of these produces the frame it
-      # recorded, so the loader only has to carry it out.
-      FITS = { contain: :both, cover: :both, stretch: :force }.freeze
-
-      # The image at the requested size. Passing neither width nor height loads
-      # it at its natural size.
-      def load(path, width: nil, height: nil, fit: :contain)
-        @images[[path, width, height, fit]] ||= read(path, width, height, fit)
+      def load(path, target = Target.natural)
+        @images[[path, target]] ||= read(path, target)
       end
 
       # The image cropped to its opaque extent and then scaled to the target.
       # Trimming needs a full-resolution pixel scan either way, so cropping first
       # and resizing after costs nothing extra and is exact.
-      def load_trimmed(path, width: nil, height: nil, fit: :contain)
-        @images[[path, :trimmed, width, height, fit]] ||= begin
-          left, top, trim_width, trim_height = trim_bounds(path)
-          image = read(path, nil, nil, fit)
-          image = image.crop(left, top, trim_width, trim_height) if trim_width.positive? && trim_height.positive?
+      def load_trimmed(path, target = Target.natural)
+        @images[[path, :trimmed, target]] ||= begin
+          left, top, width, height = trim_bounds(path)
+          image = read(path, Target.natural)
+          image = image.crop(left, top, width, height) if width.positive? && height.positive?
 
-          resize(image, width, height, fit)
+          resize(image, target)
         end
       end
 
@@ -78,35 +69,27 @@ module Loomy
         end
       end
 
-      def read(path, width, height, fit)
+      def read(path, target)
         image = header(path)
-        # Layout resolves a size for every layer, including ones that render at
-        # their natural size, so the common case asks for what is already on
-        # disk. Resampling that would be pure waste.
-        return with_alpha(image) unless resize?(image, width, height)
+        return with_alpha(image) unless target.resize?(image)
 
         if shrink_on_load?(path)
-          Vips::Image.thumbnail(path.to_s, width || NO_LIMIT, **thumbnail_options(height, fit))
+          Vips::Image.thumbnail(path.to_s, target.width || NO_LIMIT, **thumbnail_options(target))
         else
-          image.thumbnail_image(width || NO_LIMIT, **thumbnail_options(height, fit))
+          image.thumbnail_image(target.width || NO_LIMIT, **thumbnail_options(target))
         end
       end
 
-      def resize(image, width, height, fit)
-        return image unless resize?(image, width, height)
+      def resize(image, target)
+        return image unless target.resize?(image)
 
-        image.thumbnail_image(width || NO_LIMIT, **thumbnail_options(height, fit))
+        image.thumbnail_image(target.width || NO_LIMIT, **thumbnail_options(target))
       end
 
-      def resize?(image, width, height)
-        return false if width.nil? && height.nil?
+      def thumbnail_options(target)
+        options = { height: target.height || NO_LIMIT, size: SIZING.fetch(target.fit, :both) }
+        options[:crop] = :centre if target.fit == :cover
 
-        (width && width != image.width) || (height && height != image.height)
-      end
-
-      def thumbnail_options(height, fit)
-        options = { height: height || NO_LIMIT, size: FITS.fetch(fit, :both) }
-        options[:crop] = :centre if fit == :cover
         options
       end
 
