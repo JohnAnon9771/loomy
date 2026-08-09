@@ -61,6 +61,34 @@ class EffectsTest < Minitest::Test
     end
   end
 
+  # The processor used to composite a fixed :soft_light, so `type` picked
+  # nothing and the two spellings rendered the same image.
+  def test_hard_light_is_not_soft_light
+    soft = render { relight map: MAP, type: :soft }
+    hard = render { relight map: MAP, type: :hard }
+
+    refute_in_delta 0.0, difference(soft, hard), 1.0
+  end
+
+  # `strength` was read by nothing but the pruner: 0.1 and 9.0 rendered
+  # identically. Scaling the map around mid-grey is what makes it mean
+  # something, and mid-grey is exactly what both blends leave alone.
+  def test_strength_scales_how_far_the_light_is_pushed
+    distances = [0.25, 1.0, 2.0].map { |s| difference(source, render { relight map: MAP, strength: s }) }
+
+    assert_equal distances.sort, distances
+    refute_in_delta distances.first, distances.last, 1.0
+  end
+
+  # A negative strength inverts the map: highlight becomes shadow. It is a
+  # picture, not an absence, so the pruner has to let it through.
+  def test_negative_strength_inverts_the_light
+    inverted = render { relight map: MAP, strength: -1.0 }
+
+    refute_in_delta 0.0, difference(source, inverted), 1.0
+    refute_in_delta 0.0, difference(render { relight map: MAP, strength: 1.0 }, inverted), 1.0
+  end
+
   # Alpha is not a colour, but `linear` broadcasts across every band: brightening
   # a half-transparent layer used to double its opacity into full opacity.
   def test_adjust_color_leaves_alpha_alone
@@ -136,6 +164,8 @@ class EffectsTest < Minitest::Test
   def mid_grey_after(&effect)
     Loomy.generate(size: [200, 200]) { layer(GRID, &effect) }.getpoint(0, 0).first(3).map(&:to_i)
   end
+
+  def source = Vips::Image.new_from_file(PATTERN)
 
   def translucent(&effect)
     Loomy.generate(size: [20, 20]) { layer(solid: TRANSLUCENT, width: 20, height: 20, &effect) }

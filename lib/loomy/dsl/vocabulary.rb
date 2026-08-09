@@ -10,7 +10,9 @@ module Loomy
     #
     # `blend:` is deliberately absent. libvips validates its own enum and its
     # error already lists every valid mode, so a copy here would only drift
-    # away from whichever libvips is installed.
+    # away from whichever libvips is installed. `relight`'s `type:` is the
+    # opposite case and is checked here: Loomy owns that vocabulary and maps it
+    # onto a blend mode, so nothing downstream can name the valid values.
     module Vocabulary
       # Each axis names the same three positions differently, and the two
       # vocabularies do not mix.
@@ -29,6 +31,7 @@ module Loomy
       }.freeze
 
       GRADIENT_DIRECTIONS = Render::Sources::Gradient::DIRECTIONS
+      LIGHTING_TYPES = AST::Effects::Lighting::TYPES
 
       # An anchor is a compound like :bottom_right: at most one word from each
       # axis, in either order, and either half may be left out.
@@ -69,6 +72,16 @@ module Loomy
         return if GRADIENT_DIRECTIONS.include?(gradient[:direction])
 
         raise InvalidValue.new(:'gradient[:direction]', gradient[:direction], GRADIENT_DIRECTIONS, node_kind)
+      end
+
+      # Effects are built straight from DSL::Effects rather than through a
+      # builder, so they never reach validate! above; `relight` calls this
+      # itself. Without it an unknown type surfaces as a KeyError from inside
+      # the processor, half-way through a render.
+      def validate_lighting_type!(type)
+        return if LIGHTING_TYPES.include?(type)
+
+        raise InvalidValue.new(:type, type, LIGHTING_TYPES, 'relight')
       end
     end
   end

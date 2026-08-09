@@ -33,6 +33,22 @@ class PrunerTest < Minitest::Test
     assert_equal 5, effects.first.radius
   end
 
+  # Two values that look neutral and are not. Under the old maths `contrast`
+  # and `brightness` collapsed into one gain, so 2.0 and 0.5 really did cancel;
+  # contrast pivots around mid-grey now, so they do not. A negative lighting
+  # strength inverts the map rather than switching the light off.
+  def test_effects_that_only_look_neutral_survive
+    layer = Loomy::AST::Layer.new({ source: 'foo.png' }, [], [
+                                    Loomy::AST::Effects::ColorAdjustment.new(brightness: 2.0, contrast: 0.5),
+                                    Loomy::AST::Effects::Lighting.new(map: 'm.png', strength: -1.0)
+                                  ])
+    canvas = Loomy::AST::Canvas.new({ size: [100, 100] }, [layer])
+
+    pruned = Loomy::AST::Pruner.new(canvas).call
+
+    assert_equal 2, pruned.children.first.effects.size
+  end
+
   # Pruning must be open to effects it does not know about.
   def test_custom_effects_participate_in_pruning
     dimmer = Class.new(Loomy::AST::Effect) do

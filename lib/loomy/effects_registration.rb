@@ -18,6 +18,11 @@ module Loomy
     # and the point contrast pivots around.
     MID_GREY = 128.0
 
+    # The libvips blend each lighting type washes its map over the image with.
+    # The type names themselves are AST::Effects::Lighting::TYPES; picking a
+    # blend for one is a pixel decision, so it lives here.
+    LIGHT_BLENDS = { soft: :soft_light, hard: :hard_light }.freeze
+
     def self.blur(image, effect, _loader)
       image.gaussblur(effect.radius)
     end
@@ -55,9 +60,20 @@ module Loomy
     end
 
     def self.relight(image, effect, loader)
-      map = fitted_map(loader, effect.map, image)
+      map = lighting_map(fitted_map(loader, effect.map, image), effect.strength)
+      blend = LIGHT_BLENDS.fetch(effect.type)
 
-      on_colour_bands(image) { |colour| lit(colour, map, :soft_light) }
+      on_colour_bands(image) { |colour| lit(colour, map, blend) }
+    end
+
+    # `strength` scales the map around mid-grey rather than blending the lit
+    # image back over the original. Both blends leave a pixel alone where the
+    # map is mid-grey, so a flatter map is a weaker light: 1 is the map exactly
+    # as it was read, below that softens, above hardens, and a negative one
+    # inverts it. The cast is what makes strength 1 exact, and clamps the map
+    # back into range past it.
+    def self.lighting_map(map, strength)
+      (((map - MID_GREY) * strength) + MID_GREY).cast(:uchar)
     end
 
     # libvips `composite` always hands back an alpha band and always calls the
