@@ -11,6 +11,10 @@ bench/tmp/
 # RubyCritic report output.
 tmp/
 
+# Where examples/ecommerce_banner.rb writes when it is run with no --out.
+/banner.png
+/banners/
+
 # A library does not commit its lockfile: each supported Ruby resolves its own
 # compatible set.
 /.bundle/
