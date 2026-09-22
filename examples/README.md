@@ -3,7 +3,8 @@
 ## `ecommerce_banner.rb`
 
 A storefront banner composed entirely with the Loomy DSL: gradients for light,
-groups for soft edges, measured text for the column and the button.
+groups for soft edges, text wrapped by `width:` at a width chosen to balance its
+lines, and measured type for the button and the headline's size.
 
 ```bash
 bundle exec ruby examples/ecommerce_banner.rb
@@ -36,7 +37,7 @@ bundle exec ruby examples/ecommerce_banner.rb --theme ivory --preset square --ou
 
 ### What it works around
 
-Three things it wants are not in Loomy yet, and the shapes of the workarounds
+Two things it wants are not in Loomy yet, and the shapes of the workarounds
 are worth knowing before you copy them:
 
 - **No radial gradient, no masking, no rounded corners.** Light is a two-stop
@@ -46,10 +47,3 @@ are worth knowing before you copy them:
   frame there is no transparent margin to bleed into and the rectangle stays
   hard-edged. Every glow and shadow here is therefore a solid sat inside a
   *larger* group, blurred so the fade happens in the group's margin.
-- **A declared `width:` on a text layer sizes its frame wrong.** pango does wrap
-  the text at that width, but layout sizes the frame as if the glyphs had been
-  scaled up to fill it and the renderer never scales them, so the frame comes
-  out wider than the ink and an aligned layer drifts by half the difference. No
-  text layer here declares a width; line breaking is settled ahead of the render
-  with `Vips::Image.text`, which is also what sizes the button to its label and
-  steps the headline down until the column fits its box.
