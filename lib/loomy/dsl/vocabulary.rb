@@ -79,9 +79,23 @@ module Loomy
         predicate: ->(value) { (0..1).cover?(value) }
       )
 
+      # A position is plain pixels, and only pixels: layout adds it to a size
+      # straight away, so anything else -- `x :center`, `x '50%'` -- escaped as a
+      # NoMethodError or TypeError from inside the engine. Floats pass because
+      # they already rendered; a non-finite one would not.
+      COORDINATE = Rule.new(
+        expected: 'an Integer or finite Float of pixels; ' \
+                  'to position relative to the parent, use align:, valign: or anchor:',
+        predicate: ->(value) { value.is_a?(Integer) || (value.is_a?(Float) && value.finite?) }
+      )
+
       VALIDATORS = {
         width: DIMENSION,
         height: DIMENSION,
+        x: COORDINATE,
+        y: COORDINATE,
+        offset_x: COORDINATE,
+        offset_y: COORDINATE,
         opacity: OPACITY
       }.freeze
 

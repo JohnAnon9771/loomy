@@ -120,8 +120,8 @@ Loomy.render("output.png", size: [1200, 630]) do
 
   # Overlay
   layer "avatar.png" do
-    x :center
-    y :center
+    align :center
+    valign :middle
     width "20%"
     trim true # Crop away the transparent border
   end
@@ -403,7 +403,7 @@ layer "art.png" do
 end
 ```
 
-`align`, `valign`, `anchor`, `fit`, `trim`, `distribute`, `blend`, a canvas's `premultiplied`, a stack's `direction`, a gradient's `direction` and `relight`'s `type` all have closed vocabularies and say what they expected. `width`, `height` and `opacity` are checked too, against a rule rather than a list: anything else would have reached the render as a value it could not use. A `width` outside the three forms in *Sizing and fit* reads as *no size at all* and the node takes the parent box; an `opacity` outside `0.0`–`1.0` is refused rather than clamped, because `opacity: 50` — a percentage, written the way percentages are written — would clamp to a fully opaque layer and look like it worked.
+`align`, `valign`, `anchor`, `fit`, `trim`, `distribute`, `blend`, a canvas's `premultiplied`, a stack's `direction`, a gradient's `direction` and `relight`'s `type` all have closed vocabularies and say what they expected. `width`, `height`, `x`, `y`, `offset_x`, `offset_y` and `opacity` are checked too, against a rule rather than a list: anything else would have reached the render as a value it could not use. Positions take pixels only — `x :center` is refused and points at `align:`. A property given as `nil` counts as not declared, so options built from variables need no `.compact`. A `width` outside the three forms in *Sizing and fit* reads as *no size at all* and the node takes the parent box; an `opacity` outside `0.0`–`1.0` is refused rather than clamped, because `opacity: 50` — a percentage, written the way percentages are written — would clamp to a fully opaque layer and look like it worked.
 
 `blend:` is the one vocabulary Loomy does not own, so libvips is *asked* rather than copied — a one-pixel composite, once per mode per process. No list here to drift from the installed version, and the error still names every mode libvips would have taken.
 

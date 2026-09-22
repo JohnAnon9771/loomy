@@ -47,7 +47,11 @@ module Loomy
       # Both forms of the DSL funnel through here -- keyword arguments went into
       # @properties at construction, block calls wrote to it since -- so it is
       # the one place that sees every value a node was given.
+      #
+      # Compacted first, so `width: nil` means what it means to AST::Node --
+      # undeclared -- instead of being checked as a value.
       def build
+        @properties.compact!
         Vocabulary.validate!(@properties, self.class.dsl_name)
 
         node_class.new(@properties, @children, @effects)
