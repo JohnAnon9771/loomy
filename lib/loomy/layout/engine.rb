@@ -16,6 +16,13 @@ module Loomy
     # libvips does not decode pixels for that -- through the same SourceCache
     # `bounds_of` measured against and the renderer later loads from. It asks
     # for sizes and trim bounds and nothing else; no pixel reaches this pass.
+    #
+    # Text is the exception, because a text layer has no size until pango has
+    # set it. Measuring it means rasterising it, so the rasterised source is
+    # kept in a second side table and the renderer draws that very instance
+    # rather than building its own. Two instances were how #34 happened: layout
+    # and render each derived the wrap width their own way and disagreed. One
+    # instance means any option Sources::Text grows is measured and drawn alike.
     class Engine
       PERCENTAGE = /\A(-?\d+(?:\.\d+)?)%\z/
 
@@ -27,13 +34,14 @@ module Loomy
       def initialize(sources)
         @sources = sources
         @frames = {}
+        @texts = {}
       end
 
-      # => [{node => Frame}, [canvas_width, canvas_height]]
+      # => [{node => Frame}, [canvas_width, canvas_height], {node => Sources::Text}]
       def call(canvas)
         size = measure(canvas, [canvas.width, canvas.height])
 
-        [@frames, size]
+        [@frames, size, @texts]
       end
 
       private
@@ -60,31 +68,59 @@ module Loomy
       end
 
       # An undeclared axis takes the parent's box, and so does one declared
-      # :fill -- only layers care about the difference, and `declared` has
-      # already refused the case where there is no parent box to take.
+      # :fill -- only files and text care about the difference, and `declared`
+      # has already refused the case where there is no parent box to take.
       def inner_box(node, box)
         declarations = [declared(node, :width, box[0]), declared(node, :height, box[1])]
 
         declarations.zip(box).map { |value, length| value == :fill ? length : value || length }
       end
 
+      # A layer comes by its size in one of three ways, and which one is decided
+      # by its source, because the sources genuinely differ in what a declared
+      # width means to them:
+      #
+      #   file      has a natural size of its own, and is scaled to the
+      #             declared box by `fit:`
+      #   text      has a natural size that depends on how wide it may run, so
+      #             `width:` is where its lines break; it is never scaled
+      #   solid,    have no natural size, so they are exactly the declared box,
+      #   gradient  falling back to the parent's
       def measure_layer(node, box)
+        case node.source_type
+        when :file then measure_scaled(node, box)
+        when :text then measure_wrapped(node, box)
+        else measure_declared(node, box)
+        end
+      end
+
+      def measure_scaled(node, box)
         width  = declared(node, :width, box[0])
         height = declared(node, :height, box[1])
 
-        fit_size(intrinsic_size(node, box, width, height), width, height, node.fit, box)
+        fit_size(file_intrinsic(node), width, height, node.fit, box)
       end
 
-      # Natural size of the layer's source, before any fit is applied.
-      def intrinsic_size(node, box, width, height)
-        case node.source_type
-        when :file then file_intrinsic(node)
-        when :text then text_intrinsic(node, width)
-        else
-          # Solids and gradients have no natural size: they are whatever they
-          # are asked to be, falling back to the parent box.
-          [numeric(width) || box[0] || 1, numeric(height) || box[1] || 1]
-        end
+      # Exactly what pango sets. Running the wrapped size through a fit, as a
+      # file's, scaled the frame as if the glyphs had been scaled, and nothing
+      # scales them: 'Sale' at width: 600 measured 600x226 around 61x23 of ink,
+      # and align: :center put it 269px left of centre.
+      #
+      # `:fill` wraps at the parent's width, as a percentage wraps at its share.
+      # A height or a scaling fit would describe a box, and the DSL has already
+      # refused both.
+      def measure_wrapped(node, box)
+        width = declared(node, :width, box[0])
+        text = Render::Sources::Text.new(node, width: width == :fill ? box[0] : width)
+        @texts[node] = text
+
+        [text.mask.width, text.mask.height]
+      end
+
+      # An auto-sized canvas gives nothing to fall back to, and a 1px layer is
+      # at least visible as a mistake.
+      def measure_declared(node, box)
+        inner_box(node, box).map { |length| length || 1 }
       end
 
       def file_intrinsic(node)
@@ -93,12 +129,6 @@ module Loomy
         _left, _top, trim_width, trim_height = @sources.trim_bounds(node.source, node.trim)
 
         [trim_width, trim_height]
-      end
-
-      def text_intrinsic(node, width)
-        mask = Render::Sources::Text.new(node, width: numeric(width)).mask
-
-        [mask.width, mask.height]
       end
 
       # Applies the declared width/height and fit to an intrinsic size.

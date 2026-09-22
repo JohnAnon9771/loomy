@@ -6,7 +6,8 @@ module Loomy
       # Rendered text, as a coloured image masked by the glyph coverage.
       #
       # Layout uses #mask on its own to measure the text before anything is
-      # composited, so the mask is built once and reused.
+      # composited, and the renderer draws the same instance, so the mask is
+      # built once and every option here is measured exactly as it is drawn.
       class Text
         DEFAULT_FONT = 'sans'
         DEFAULT_SIZE = 24

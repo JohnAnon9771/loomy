@@ -18,13 +18,12 @@
 #              has nothing to bleed into and the rectangle stays hard)
 #   shadow     the same trick in the theme's shade colour, under the artwork
 #
-# Type is measured with `Vips::Image.text` before the render, for three reasons:
+# Lines are broken by Loomy: the headline and subhead declare a `width:` and
+# pango wraps them there. Type is still measured with `Vips::Image.text` before
+# the render, for three reasons:
 #
-#   - No text layer here declares a `width:`. One that does gets wrapped by
-#     pango at that width, but layout then sizes its *frame* as if the glyphs
-#     had been scaled to fill it, and the renderer never scales them -- so the
-#     frame is wider than the ink and anything aligned against it sits off
-#     centre by half the difference. Wrapping is settled here instead.
+#   - The wrap width is chosen, not given: the narrowest one that keeps the
+#     same number of lines, which is what evens them out (see Type.balance).
 #   - A button has to be as wide as its label plus padding, and nothing but a
 #     measurement knows how wide the words are.
 #   - The headline steps down until the column fits its box, which means
@@ -98,72 +97,54 @@ module EcommerceBanner
   # and a stack -- one `spacing:` for every gap -- would not reproduce them.
   GAPS = { kicker: 18, eyebrow: 24, headline: 20, subhead: 26, price: 30 }.freeze
 
-  # Measuring, wrapping, and the one thing both need: the pango font string.
+  # Measuring, and the one thing it needs: the pango font string.
   module Type
     module_function
 
     def font(family, size) = "#{family} #{size}"
 
-    # Line breaking asks for the same measurement over and over -- once per
-    # candidate line, per wrap, per step of `fit_column` -- and the answer only
-    # depends on the two arguments, so it is kept.
+    # Balancing and `fit_column` ask for the same measurement over and over, and
+    # the answer only depends on the three arguments, so it is kept.
     CACHE = {} # rubocop:disable Style/MutableConstant -- filled as it goes
 
-    # Loomy renders text through `Vips::Image.text(..., width: 0)`, so measuring
-    # the same call is measuring exactly what will be drawn.
-    def measure(content, font)
-      CACHE[[content, font]] ||= begin
-        image = Vips::Image.text(content.to_s, font: font)
+    # The same call a text layer makes, so it measures exactly what that layer
+    # will draw. 0 is libvips' "no wrapping".
+    def measure(content, font, width = nil)
+      CACHE[[content, font, width]] ||= begin
+        image = Vips::Image.text(content.to_s, font: font, width: width || 0)
 
         [image.width, image.height]
       end
     end
 
     def width_of(content, font) = measure(content, font)[0]
-    def height_of(content, font) = measure(content, font)[1]
+    def height_of(content, font, width = nil) = measure(content, font, width)[1]
 
-    # Greedy line breaking against measured widths, returned as one string with
-    # newlines: pango lays those out itself, so the whole headline stays a
-    # single layer and keeps its natural leading.
-    def wrap(content, font, max_width)
-      content.to_s.split("\n").flat_map { |paragraph| wrap_paragraph(paragraph, font, max_width) }.join("\n")
-    end
-
-    # A word wider than the box still gets its own line rather than being
-    # dropped -- overflowing is visible, and disappearing is not.
-    def wrap_paragraph(paragraph, font, max_width)
-      paragraph.split(/\s+/).each_with_object([]) do |word, lines|
-        candidate = lines.empty? ? word : "#{lines.last} #{word}"
-
-        if !lines.empty? && width_of(candidate, font) <= max_width
-          lines[-1] = candidate
-        else
-          lines << word
-        end
-      end
-    end
-
-    # Greedy wrapping at the full column width leaves widows -- one short word
-    # alone on the last line -- which is the difference between type that was
-    # set and type that merely fitted. Wrapping the same words into the same
-    # number of lines inside a *narrower* box has to even them out, so the
-    # narrowest box that still breaks into that many lines is the balanced one.
+    # Wrapping at the full column width leaves widows -- one short word alone on
+    # the last line -- which is the difference between type that was set and
+    # type that merely fitted. Wrapping the same words into the same number of
+    # lines inside a *narrower* box has to even them out, so the narrowest width
+    # that still breaks into that many lines is the balanced one, and that width
+    # is what the layer declares. Copy that fits on one line needs none.
+    #
+    # Lines are counted by height, with half a line of slack: pango crops to the
+    # ink, so the same two lines come out a few pixels taller or shorter
+    # depending on which descenders land on the last one, while one line more
+    # adds a whole line.
     def balance(content, font, max_width)
-      lines = wrap(content, font, max_width).split("\n")
-      return lines.join("\n") if lines.size < 2
+      return nil if width_of(content, font) <= max_width
 
-      best = lines
-      width = max_width
+      target = height_of(content, font, max_width) + (height_of(content, font) / 2)
+      best = max_width
 
-      while width > max_width * 0.5
-        width = (width * 0.96).round
-        candidate = wrap(content, font, width).split("\n")
-        break if candidate.size > lines.size
+      while best > max_width * 0.5
+        width = (best * 0.96).round
+        break if height_of(content, font, width) > target
 
-        best = candidate
+        best = width
       end
 
-      best.join("\n")
+      best
     end
   end
 
@@ -175,10 +156,10 @@ module EcommerceBanner
     def bottom = y + height
   end
 
-  # The measured copy: what to draw, in which font, and how tall that comes to.
-  # Built by `fit_column`, which is what the stacked layouts consult before they
-  # know where anything goes.
-  Column = Data.define(:copy, :fonts, :blocks, :headline_size, :cta_size) do
+  # The measured copy: which font each block is set in, the width each wrapping
+  # block breaks at, and how tall that comes to. Built by `fit_column`, which is
+  # what the stacked layouts consult before they know where anything goes.
+  Column = Data.define(:fonts, :widths, :blocks, :headline_size, :cta_size) do
     def height = EcommerceBanner.column_height(blocks)
 
     # {name => y} inside a box of this height. Asked once the box is settled,
@@ -278,11 +259,11 @@ module EcommerceBanner
   # The copy, in the order it stacks, as [name, height] pairs. Anything the
   # caller blanked out is dropped here, so the column closes up rather than
   # leaving a hole.
-  def column_blocks(copy, fonts, kicker_height, cta_height)
+  def column_blocks(copy, fonts, widths, kicker_height, cta_height)
     blocks = [[:kicker, kicker_height]]
 
     %i[eyebrow headline subhead price].each do |field|
-      blocks << [field, Type.height_of(copy[field], fonts[field])] if copy[field]
+      blocks << [field, Type.height_of(copy[field], fonts[field], widths[field])] if copy[field]
     end
     blocks << [:cta, cta_height] if copy[:cta]
 
@@ -307,8 +288,8 @@ module EcommerceBanner
   # The declared type sizes are a starting point, not a promise: the copy
   # belongs to the caller and the canvas does not stretch, so the headline steps
   # down until the column fits its box. Wrapping changes with the size, so every
-  # step re-wraps -- a dozen `Vips::Image.text` calls at worst, and none of them
-  # decodes a pixel of the render.
+  # step re-balances -- a few dozen `Vips::Image.text` calls at worst, and none
+  # of them decodes a pixel of the render.
   def fit_column(copy, width, budget, scale, kicker_height, cta_height)
     ceiling = (SIZES[:headline] * scale).round
     floor = (ceiling * 0.6).round
@@ -317,11 +298,11 @@ module EcommerceBanner
 
     loop do
       fonts = fonts_for(scale, size)
-      wrapped = wrap_copy(copy, fonts, width)
-      blocks = column_blocks(wrapped, fonts, kicker_height, cta_height)
+      widths = wrap_widths(copy, fonts, width)
+      blocks = column_blocks(copy, fonts, widths, kicker_height, cta_height)
 
       if column_height(blocks) <= budget || size <= floor
-        return Column.new(copy: wrapped, fonts: fonts, blocks: blocks,
+        return Column.new(fonts: fonts, widths: widths, blocks: blocks,
                           headline_size: size, cta_size: (SIZES[:cta] * scale).round)
       end
 
@@ -336,13 +317,13 @@ module EcommerceBanner
   # column.
   MEASURE = 62
 
-  def wrap_copy(copy, fonts, width)
+  def wrap_widths(copy, fonts, width)
     subhead_width = [width, Type.width_of('n' * MEASURE, fonts[:subhead])].min
 
-    copy.merge(
+    {
       headline: copy[:headline] && Type.balance(copy[:headline], fonts[:headline], width),
       subhead: copy[:subhead] && Type.balance(copy[:subhead], fonts[:subhead], subhead_width)
-    )
+    }
   end
 
   # Decorative artwork for a banner with no product photo: panels standing on a
@@ -433,7 +414,6 @@ module EcommerceBanner
     text_region = regions[:text]
     art = regions[:art]
     pos = column.positions(text_region.height)
-    text = column.copy
 
     # Soft-edge geometry. A blur only feathers where it has transparent margin
     # to feather into, so every radius here comes with the margin that lets it,
@@ -526,22 +506,22 @@ module EcommerceBanner
         layer solid: theme.accent, width: rule_width, height: rule_height, y: pos[:kicker], align: align
 
         if pos[:eyebrow]
-          layer text: text[:eyebrow], font: DISPLAY, size: type_size[:eyebrow],
+          layer text: copy[:eyebrow], font: DISPLAY, size: type_size[:eyebrow],
                 color: theme.accent, y: pos[:eyebrow], align: align
         end
 
         if pos[:headline]
-          layer text: text[:headline], font: DISPLAY, size: column.headline_size,
-                color: theme.ink, y: pos[:headline], align: align
+          layer text: copy[:headline], font: DISPLAY, size: column.headline_size,
+                width: column.widths[:headline], color: theme.ink, y: pos[:headline], align: align
         end
 
         if pos[:subhead]
-          layer text: text[:subhead], font: SANS, size: type_size[:subhead],
-                color: theme.muted, y: pos[:subhead], align: align
+          layer text: copy[:subhead], font: SANS, size: type_size[:subhead],
+                width: column.widths[:subhead], color: theme.muted, y: pos[:subhead], align: align
         end
 
         if pos[:price]
-          layer text: text[:price], font: DISPLAY, size: type_size[:price],
+          layer text: copy[:price], font: DISPLAY, size: type_size[:price],
                 color: theme.ink, y: pos[:price], align: align
         end
 
@@ -550,7 +530,7 @@ module EcommerceBanner
         if pos[:cta]
           group y: pos[:cta], width: cta_box_width, height: cta_box_height, align: align do
             layer gradient: { from: theme.accent_hi, to: theme.accent, direction: :top_bottom }
-            layer text: text[:cta], font: DISPLAY, size: column.cta_size,
+            layer text: copy[:cta], font: DISPLAY, size: column.cta_size,
                   color: theme.on_accent, align: :center, valign: :middle
           end
         end
@@ -558,14 +538,14 @@ module EcommerceBanner
 
       # 8. The discount badge, after the artwork so it sits over its edge -- the
       #    overlap is what makes it read as applied to the product.
-      if text[:badge]
+      if copy[:badge]
         group x: badge_x, y: badge_y, width: badge_size, height: badge_size do
           layer solid: theme.accent
           vstack spacing: px[4], align: :center, distribute: :center do
-            layer text: text[:badge], font: DISPLAY, size: type_size[:badge_value],
+            layer text: copy[:badge], font: DISPLAY, size: type_size[:badge_value],
                   color: theme.on_accent
-            if text[:badge_label]
-              layer text: text[:badge_label], font: DISPLAY, size: type_size[:badge_label],
+            if copy[:badge_label]
+              layer text: copy[:badge_label], font: DISPLAY, size: type_size[:badge_label],
                     color: theme.on_accent, opacity: 0.7
             end
           end
@@ -576,10 +556,10 @@ module EcommerceBanner
       #    print sitting in the band under it. Full width on purpose -- it is
       #    the one element that belongs to the storefront rather than to the
       #    offer, and it reads that way when it ignores the column.
-      if text[:note]
+      if copy[:note]
         layer solid: theme.ink, y: height - foot_height, width: width, height: 1, opacity: 0.16
         group x: frame[:pad], y: height - foot_height, width: width - (frame[:pad] * 2), height: foot_height do
-          layer text: text[:note], font: SANS, size: type_size[:note],
+          layer text: copy[:note], font: SANS, size: type_size[:note],
                 color: theme.muted, align: align, valign: :middle
         end
       end

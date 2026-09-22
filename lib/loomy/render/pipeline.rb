@@ -16,7 +16,7 @@ module Loomy
       # its own. A source failure is already an InvalidSource by now, and that is
       # not a Vips::Error, so it passes through.
       def call
-        frames, canvas_size = Layout::Engine.new(@sources).call(@canvas)
+        frames, canvas_size, texts = Layout::Engine.new(@sources).call(@canvas)
         loader = SourceLoader.new(@sources)
 
         Renderer.new(
@@ -24,6 +24,7 @@ module Loomy
           canvas_size: canvas_size,
           loader: loader,
           effects: EffectRegistry.snapshot(loader),
+          texts: texts,
           premultiplied: @canvas.premultiplied
         ).call(@canvas)
       rescue Vips::Error => e

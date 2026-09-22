@@ -204,6 +204,12 @@ layer "art.png", width: :fill      # the whole parent box on that axis
 
 `width: :fill` implies `:stretch` on its own: it names a box, and the layer has to reach it. `fit: :cover` still wins over that, because cropping is what you asked for.
 
+Text sizes differently, because its size depends on how wide it may run. A text layer is drawn at its font size and is exactly as big as the lines pango sets, so its `width:` — pixels, a percentage or `:fill` alike — is where those lines break, not a box the glyphs are scaled into. `align:` and stacks place it by the size it actually draws at. `height:` and `fit: :cover`/`:stretch` would ask for a box text is never scaled into, so on a text layer they raise `Loomy::InvalidValue` as the layer is declared:
+
+```ruby
+layer text: "Selected pieces, at a price that will not come round again.", size: 30, width: 600, align: :center
+```
+
 `trim:` crops a source to its content before any of this happens, so the layer measures at the size of what is actually in the file rather than the size of the file:
 
 ```ruby

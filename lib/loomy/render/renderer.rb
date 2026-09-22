@@ -11,9 +11,11 @@ module Loomy
     class Renderer < AST::Visitor
       MM_PER_INCH = 25.4
 
-      def initialize(frames:, canvas_size:, loader:, effects:, premultiplied: false)
+      # `texts` is layout's own text sources, drawn as measured; see Layout::Engine.
+      def initialize(frames:, canvas_size:, loader:, effects:, texts: {}, premultiplied: false)
         super()
         @frames = frames
+        @texts = texts
         @canvas_size = canvas_size
         @loader = loader
         @effects = effects
@@ -96,7 +98,7 @@ module Loomy
         when :file then file_image(node, frame)
         when :solid then Sources::Solid.new(node.solid, frame.width, frame.height).call
         when :gradient then Sources::Gradient.new(node.gradient, frame.width, frame.height).call
-        when :text then Sources::Text.new(node, width: text_wrap_width(node)).call
+        when :text then @texts.fetch(node).call
         else raise InternalError, "Layer has no renderable source: #{node.properties.inspect}"
         end
       end
@@ -121,10 +123,6 @@ module Loomy
         return :stretch if node.fit == :stretch || node.width == :fill || node.height == :fill
 
         :contain
-      end
-
-      def text_wrap_width(node)
-        node.width.is_a?(Numeric) ? node.width : nil
       end
 
       # libvips composite wants a colour interpretation it can reason about;
