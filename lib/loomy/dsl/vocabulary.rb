@@ -96,7 +96,8 @@ module Loomy
         y: COORDINATE,
         offset_x: COORDINATE,
         offset_y: COORDINATE,
-        opacity: OPACITY
+        opacity: OPACITY,
+        name: Rule.new('a non-empty Symbol or String', ->(id) { (id in Symbol | String) && !id.empty? })
       }.freeze
 
       # Blend modes libvips has already accepted, so it is asked once per mode

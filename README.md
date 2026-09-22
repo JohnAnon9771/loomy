@@ -228,6 +228,28 @@ bounds = bounds_of "art.png", :alpha   # => Loomy::Bounds(x:, y:, width:, height
 
 Trimming is a full pixel scan, paid once per source per mode. It is also why a trimmed source cannot be streamed — see *Performance*.
 
+#### Where a node lands
+
+`bounds_of` answers for a file; `Loomy.measure` answers for the declaration, after fit, trim, alignment and stacking have all been applied. Give a node a `name:` and it reports that node's frame in canvas coordinates, without rendering (layout reads image headers only):
+
+```ruby
+product = proc do
+  group x: 700, y: 40, width: 460, height: 548 do
+    layer "shoe.png", width: 460, height: 548, align: :center, valign: :middle, trim: true, name: :product
+  end
+end
+
+box = Loomy.measure(size: [1200, 628], &product).fetch(:product)
+# => Loomy::Layout::Frame(x:, y:, width:, height:), with #right and #bottom
+
+Loomy.render("banner.png", size: [1200, 628]) do
+  instance_exec(&product)
+  layer solid: "#e11d48", width: 96, height: 96, x: box.x - 32, y: box.y - 16   # pinned to the product, not its region
+end
+```
+
+A declaration cannot depend on its own layout, so measuring is a separate call: declare the part you need to know about once, measure it, then render with the answer. `[]` returns `nil` for a name with no frame; `fetch` raises `Loomy::UnknownNode`, saying whether the name was never declared or was pruned because it draws nothing. A name used twice raises `Loomy::DuplicateName`.
+
 ### 8. Built-in Effects
 
 Every effect below is declared inside a layer, group or stack block, and applies in declaration order.
@@ -392,6 +414,8 @@ Every error also answers `#code` with a stable symbol — `:invalid_source`, `:e
 | `InvalidValue` | `:invalid_value` | the property exists, the value is outside its vocabulary |
 | `UnknownEffect` | `:unknown_effect` | an effect was declared with no processor registered for it |
 | `LayoutError` | `:layout_error` | geometry cannot be resolved — a `"50%"` or a `:fill` with no parent box to be relative to |
+| `UnknownNode` | `:unknown_node` | `fetch` on a `Loomy.measure` result names a node that has no frame — never declared, or pruned |
+| `DuplicateName` | `:duplicate_name` | two nodes in one declaration share a `name:` |
 
 Both halves of a declaration are checked: the property name, and its value.
 

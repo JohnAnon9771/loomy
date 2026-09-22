@@ -8,6 +8,9 @@ module Loomy
       include Effects
 
       property :x, :y, :width, :height, :blend, :opacity
+
+      # What Loomy.measure reports this node's frame under.
+      property :name
       property :anchor, :offset_x, :offset_y
 
       # Cross-axis alignment of the children: `align` for a vertical stack,

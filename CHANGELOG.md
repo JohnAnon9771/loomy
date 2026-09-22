@@ -14,6 +14,13 @@ Restructure of the rendering pipeline. The public API — `Loomy.render`,
 
 ### Added
 
+- `Loomy.measure` and a `name:` property on layers, groups and stacks. It lays a
+  declaration out without rendering and returns each named node's frame in
+  canvas coordinates, after fit, trim, alignment and stacking. Before this, the
+  only way to pin something to a contain-fit image's real box was to copy the
+  engine's `contain` arithmetic, which is what `examples/ecommerce_banner.rb`
+  did and no longer does (#42). `fetch` on an unmeasured name raises
+  `UnknownNode`; a name used twice raises `DuplicateName`.
 - `opacity:` on layers, groups and stacks — a share of full opacity from `0.0`
   to `1.0`, applied to the node's alpha where it meets its parent. On a group it
   fades the composited result, which is a different picture from fading each
