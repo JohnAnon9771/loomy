@@ -161,11 +161,57 @@ class VocabularyTest < Minitest::Test
     assert_match(/Expected: true, false/, error.message)
   end
 
-  # The canvas properties are built by slicing the options, and validation runs
-  # before nils are dropped -- so an option nobody mentioned must not arrive as
-  # a nil to be checked against a vocabulary that has no nil in it.
+  # The canvas properties are built by slicing the options, so an option nobody
+  # mentioned arrives as nil and must not be checked as a value.
   def test_a_canvas_that_omits_premultiplied_still_builds
     build { layer solid: '#f00' }
+  end
+
+  # nil means undeclared to AST::Node, so it has to mean that here too:
+  # properties built from variables should not need a .compact at the call site.
+  def test_nil_counts_as_undeclared
+    canvas = build { layer solid: '#f00', width: nil, height: nil, x: nil, opacity: nil, fit: nil }
+
+    assert_empty canvas.children.first.properties.slice(:width, :height, :x, :opacity, :fit)
+  end
+
+  def test_nil_counts_as_undeclared_in_the_block_form_too
+    build do
+      layer do
+        solid '#f00'
+        width nil
+        align nil
+      end
+    end
+  end
+
+  # Each used to escape from inside layout as a NoMethodError or TypeError,
+  # outside the Loomy::Error taxonomy.
+  def test_coordinates_reject_anything_but_pixels
+    [:center, '50%', '10', Float::NAN, Float::INFINITY].each do |value|
+      %i[x y offset_x offset_y].each do |name|
+        error = assert_raises(Loomy::InvalidValue) { build { layer solid: '#f00', name => value } }
+
+        assert_equal name, error.property
+      end
+    end
+  end
+
+  def test_a_coordinate_error_points_at_alignment
+    error = assert_raises(Loomy::InvalidValue) { build { layer(solid: '#f00') { x :center } } }
+
+    assert_match(/use align:, valign: or anchor:/, error.message)
+  end
+
+  def test_coordinates_are_checked_on_containers
+    assert_raises(Loomy::InvalidValue) { build { group(x: :center) { layer solid: '#f00' } } }
+    assert_raises(Loomy::InvalidValue) { build { vstack(offset_y: '5%') { layer solid: '#f00' } } }
+  end
+
+  def test_coordinates_accept_every_documented_form
+    [0, 10, -10, 12.5].each do |value|
+      build { layer solid: '#f00', x: value, y: value, offset_x: value, offset_y: value }
+    end
   end
 
   def test_anchor_rejects_a_misspelled_half
