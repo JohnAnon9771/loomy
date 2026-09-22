@@ -177,6 +177,18 @@ Restructure of the rendering pipeline. The public API — `Loomy.render`,
 
 ### Fixed
 
+- A text layer with a `width:` had a frame bigger than the pixels it drew (#34).
+  Layout wrapped the text at that width and then contained the wrapped size
+  into it, as if the glyphs had been scaled to fill it; the renderer never
+  scaled them. `align:`, stacks and an auto-sized canvas all worked from that
+  frame, so the text landed off-position in silence — `'Sale'` at `width: 600`
+  measured 600x226 around 61x23 of ink and sat 269px left of centre. `width:` on
+  text is now where lines break and nothing more, and the frame is the size
+  pango sets. The renderer also derived the wrap width on its own and only
+  wrapped for an Integer, so `width: '50%'` wrapped in layout and drew as one
+  long line, and `width: :fill` did not wrap at all; it now draws the very
+  source layout measured. `height:` and `fit: :cover`/`:stretch` on text raise `LayoutError`,
+  since they describe a box the text was never going to be scaled into.
 - `trim:` could not see a white subject, and said nothing about it. It was
   libvips' `find_trim`, which measures distance from a background colour that
   defaults to **white**: a white subject on a transparent background is that

@@ -16,6 +16,13 @@ module Loomy
     # libvips does not decode pixels for that -- through the same SourceCache
     # `bounds_of` measured against and the renderer later loads from. It asks
     # for sizes and trim bounds and nothing else; no pixel reaches this pass.
+    #
+    # Text is the exception, because a text layer has no size until pango has
+    # set it. Measuring it means rasterising it, so the rasterised source is
+    # kept in a second side table and the renderer draws that very instance
+    # rather than building its own. Two instances were how #34 happened: layout
+    # and render each derived the wrap width their own way and disagreed. One
+    # instance means any option Sources::Text grows is measured and drawn alike.
     class Engine
       PERCENTAGE = /\A(-?\d+(?:\.\d+)?)%\z/
 
@@ -27,13 +34,14 @@ module Loomy
       def initialize(sources)
         @sources = sources
         @frames = {}
+        @texts = {}
       end
 
-      # => [{node => Frame}, [canvas_width, canvas_height]]
+      # => [{node => Frame}, [canvas_width, canvas_height], {node => Sources::Text}]
       def call(canvas)
         size = measure(canvas, [canvas.width, canvas.height])
 
-        [@frames, size]
+        [@frames, size, @texts]
       end
 
       private
@@ -69,17 +77,49 @@ module Loomy
       end
 
       def measure_layer(node, box)
+        return measure_text(node, box) if node.source_type == :text
+
         width  = declared(node, :width, box[0])
         height = declared(node, :height, box[1])
 
         fit_size(intrinsic_size(node, box, width, height), width, height, node.fit, box)
       end
 
+      # A text layer is exactly as big as the glyphs pango sets, and `width:` is
+      # where it breaks lines, not a box to fit them into. Running the wrapped
+      # size through a fit scaled the frame as if the glyphs had been scaled,
+      # and nothing scales them: 'Sale' at width: 600 measured 600x226 around
+      # 61x23 of ink, and align: :center put it 269px left of centre.
+      #
+      # `:fill` wraps at the parent's width, as a percentage wraps at its share.
+      def measure_text(node, box)
+        refuse_text_box!(node)
+
+        width = declared(node, :width, box[0])
+        text = Render::Sources::Text.new(node, width: width == :fill ? box[0] : width)
+        @texts[node] = text
+
+        [text.mask.width, text.mask.height]
+      end
+
+      # A box for text to be scaled into is something the renderer has never
+      # drawn, so declaring one is refused rather than laid out and then
+      # ignored. `fit: :contain` passes: it is the default spelled out.
+      def refuse_text_box!(node)
+        if node.height
+          raise LayoutError, "Cannot size text to height: #{node.height.inspect}: " \
+                             'a text layer is as tall as its lines, and width: sets where they break'
+        end
+        return unless EXACT_FITS.include?(node.fit)
+
+        raise LayoutError, "Cannot fit text with fit: #{node.fit.inspect}: " \
+                           'text is drawn at its font size, never scaled into a box'
+      end
+
       # Natural size of the layer's source, before any fit is applied.
       def intrinsic_size(node, box, width, height)
         case node.source_type
         when :file then file_intrinsic(node)
-        when :text then text_intrinsic(node, width)
         else
           # Solids and gradients have no natural size: they are whatever they
           # are asked to be, falling back to the parent box.
@@ -93,12 +133,6 @@ module Loomy
         _left, _top, trim_width, trim_height = @sources.trim_bounds(node.source, node.trim)
 
         [trim_width, trim_height]
-      end
-
-      def text_intrinsic(node, width)
-        mask = Render::Sources::Text.new(node, width: numeric(width)).mask
-
-        [mask.width, mask.height]
       end
 
       # Applies the declared width/height and fit to an intrinsic size.
