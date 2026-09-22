@@ -155,6 +155,39 @@ module Loomy
     def code = :layout_error
   end
 
+  # `fetch` on a Loomy.measure result asked for a name it has no frame for.
+  # Declared-but-pruned is told apart from never-declared, because the fix is
+  # different: one draws nothing, the other is a typo.
+  class UnknownNode < DeclarationError
+    attr_reader :name
+
+    # `declared` is every name in the tree before pruning, `measured` the ones
+    # that got a frame.
+    def initialize(name, measured = [], declared = [])
+      @name = name
+      pruned = declared.include?(name)
+      reason = pruned ? 'was declared but draws nothing, so it was pruned before layout' : 'was never declared'
+      listed = measured.empty? ? '(none)' : measured.map(&:inspect).join(', ')
+
+      super("Node #{name.inspect} #{reason}. Measured: #{listed}")
+    end
+
+    def code = :unknown_node
+  end
+
+  # Two nodes in one declaration were given the same `name:`, so a measurement
+  # could not say which of them the name means.
+  class DuplicateName < DeclarationError
+    attr_reader :name
+
+    def initialize(name)
+      @name = name
+      super("Name #{name.inspect} is given to more than one node; names have to be unique within a declaration")
+    end
+
+    def code = :duplicate_name
+  end
+
   # ---- carrying it out failed -----------------------------------------------
 
   # libvips refused an operation the composition asked for. #cause carries the

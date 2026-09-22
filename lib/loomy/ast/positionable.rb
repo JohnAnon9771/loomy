@@ -27,6 +27,9 @@ module Loomy
       # `|| 1.0` is safe for `opacity: 0` -- 0 is truthy in Ruby, and nil only
       # ever means the property went undeclared, since AST::Node compacts.
       def opacity = properties[:opacity] || 1.0
+
+      # Read by Layout::Measurement only; nothing that renders looks at it.
+      def name = properties[:name]
     end
   end
 end

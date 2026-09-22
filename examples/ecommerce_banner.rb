@@ -352,24 +352,32 @@ module EcommerceBanner
     end
   end
 
-  # Where the artwork actually lands inside the box it was given. A product is
-  # scaled to fit and centred, so it touches at most one pair of the region's
-  # edges and can sit far inside the other pair -- and a badge pinned to the
-  # region rather than to that box is a badge parked near the product instead of
-  # applied to it. The panel composition fills its region by construction, so
-  # there it is the region.
+  # The artwork: the product photo, trimmed to its content so a transparent or
+  # white border does not push it off centre -- or, with no photo to show, the
+  # panel composition.
   #
-  # `bounds` is what `bounds_of` measured, which is the same trim the layer's
-  # own `trim: true` will crop to.
-  def placed_box(region, bounds)
-    return region if bounds.nil?
-
-    factor = [region.width.fdiv(bounds.width), region.height.fdiv(bounds.height)].min
-    width = (bounds.width * factor).round
-    height = (bounds.height * factor).round
-
-    Region.new(x: region.x + ((region.width - width) / 2), y: region.y + ((region.height - height) / 2),
-               width: width, height: height)
+  # A proc because it is declared twice: once to Loomy.measure, to learn where
+  # the product lands, and once in the render. A product is scaled to fit and
+  # centred, so it touches at most one pair of the region's edges -- and a badge
+  # pinned to the region rather than to that box is a badge parked near the
+  # product instead of applied to it. Declaring it once is what keeps the
+  # measured box and the drawn one the same box.
+  def artwork_declaration(art, product, panels, theme)
+    proc do
+      group x: art.x, y: art.y, width: art.width, height: art.height, name: :artwork do
+        if product
+          layer product, width: art.width, height: art.height, fit: :contain,
+                         align: :center, valign: :middle, trim: true, name: :product
+        else
+          panels.each do |panel|
+            layer gradient: { from: panel[:from], to: panel[:to], direction: :top_bottom },
+                  x: panel[:x], y: panel[:y], width: panel[:width], height: panel[:height]
+            layer solid: theme.ink, x: panel[:x], y: panel[:y],
+                  width: panel[:width], height: panel[:cap], opacity: 0.45
+          end
+        end
+      end
+    end
   end
 
   # The same box grown on every side. Used for the halo, whose group has to be
@@ -425,11 +433,13 @@ module EcommerceBanner
     badge_size = px[112]
     panels = product ? [] : collage_panels(art, theme)
 
+    # The box the halo, the shadow and the badge all hang off. The panel
+    # composition fills its region by construction, so there it is the region.
+    artwork = artwork_declaration(art, product, panels, theme)
+    placement = Loomy.measure(size: [width, height], &artwork)
+    drawn = placement[:product] || placement.fetch(:artwork)
+
     Loomy.render(output_path, size: [width, height], **write_options(output_path)) do
-      # Measured through the same cache the render will load the product from,
-      # so the box below agrees with what `trim: true` crops to further down.
-      # Both the shadow and the badge hang off it.
-      drawn = EcommerceBanner.placed_box(art, product && bounds_of(product))
       badge_x = drawn.x - (badge_size / 3)
       badge_y = drawn.y - (badge_size / 6)
 
@@ -482,22 +492,8 @@ module EcommerceBanner
         blur radius: shadow_blur
       end
 
-      # 6. The artwork itself: the product photo, trimmed to its content so a
-      #    transparent or white border does not push it off centre -- or, with
-      #    no photo to show, the panel composition.
-      group x: art.x, y: art.y, width: art.width, height: art.height do
-        if product
-          layer product, width: art.width, height: art.height, fit: :contain,
-                         align: :center, valign: :middle, trim: true
-        else
-          panels.each do |panel|
-            layer gradient: { from: panel[:from], to: panel[:to], direction: :top_bottom },
-                  x: panel[:x], y: panel[:y], width: panel[:width], height: panel[:height]
-            layer solid: theme.ink, x: panel[:x], y: panel[:y],
-                  width: panel[:width], height: panel[:cap], opacity: 0.45
-          end
-        end
-      end
+      # 6. The artwork itself, exactly as it was measured.
+      instance_exec(&artwork)
 
       # 7. The copy. Drawn inside a group on the text region so `align:` centres
       #    against the column rather than the canvas, which is the whole of the

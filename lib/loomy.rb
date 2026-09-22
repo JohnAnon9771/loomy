@@ -50,6 +50,21 @@ module Loomy
       encoding(format, sources) { image.write_to_buffer(format, **write_options(options)) }
     end
 
+    # Where every named node lands, without rendering: layout reads image
+    # headers and nothing else. Measure a declaration here, then render with
+    # what it answered -- a declaration cannot depend on its own layout, so the
+    # two are separate calls by necessity.
+    def measure(**options, &)
+      declared, sources = declare(options, &)
+      canvas = AST::Pruner.new(declared).call
+      frames, size = Layout::Engine.new(sources).call(canvas)
+
+      Layout::Measurement.new(declared, canvas, frames, size)
+    rescue Vips::Error => e
+      # Text is measured by rendering its mask, so libvips can refuse here too.
+      raise BackendError.new('Measuring the layout', e.message)
+    end
+
     def styles
       @styles ||= {}
     end
@@ -68,14 +83,19 @@ module Loomy
 
     private
 
+    def compose(options, &)
+      canvas, sources = declare(options, &)
+
+      [AST::Pruner.new(canvas).call, sources]
+    end
+
     # One source cache per render, built before the block is evaluated:
     # `bounds_of` measures a source while the DSL is still running, and has to
     # see the same orientation, threshold and scan the render will.
-    def compose(options, &)
+    def declare(options, &)
       sources = Render::SourceCache.new
-      canvas = DSL::PipelineBuilder.new(sources, options, &).build
 
-      [AST::Pruner.new(canvas).call, sources]
+      [DSL::PipelineBuilder.new(sources, options, &).build, sources]
     end
 
     # The image is written once and dropped, so the sources the tree reads once
