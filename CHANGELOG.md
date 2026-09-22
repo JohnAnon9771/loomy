@@ -187,8 +187,9 @@ Restructure of the rendering pipeline. The public API — `Loomy.render`,
   pango sets. The renderer also derived the wrap width on its own and only
   wrapped for an Integer, so `width: '50%'` wrapped in layout and drew as one
   long line, and `width: :fill` did not wrap at all; it now draws the very
-  source layout measured. `height:` and `fit: :cover`/`:stretch` on text raise `LayoutError`,
-  since they describe a box the text was never going to be scaled into.
+  source layout measured. `height:` and `fit: :cover`/`:stretch` on text raise
+  `InvalidValue` as the layer is declared, since they describe a box the text
+  was never going to be scaled into.
 - `trim:` could not see a white subject, and said nothing about it. It was
   libvips' `find_trim`, which measures distance from a background colour that
   defaults to **white**: a white subject on a transparent background is that

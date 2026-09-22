@@ -68,33 +68,48 @@ module Loomy
       end
 
       # An undeclared axis takes the parent's box, and so does one declared
-      # :fill -- only layers care about the difference, and `declared` has
-      # already refused the case where there is no parent box to take.
+      # :fill -- only files and text care about the difference, and `declared`
+      # has already refused the case where there is no parent box to take.
       def inner_box(node, box)
         declarations = [declared(node, :width, box[0]), declared(node, :height, box[1])]
 
         declarations.zip(box).map { |value, length| value == :fill ? length : value || length }
       end
 
+      # A layer comes by its size in one of three ways, and which one is decided
+      # by its source, because the sources genuinely differ in what a declared
+      # width means to them:
+      #
+      #   file      has a natural size of its own, and is scaled to the
+      #             declared box by `fit:`
+      #   text      has a natural size that depends on how wide it may run, so
+      #             `width:` is where its lines break; it is never scaled
+      #   solid,    have no natural size, so they are exactly the declared box,
+      #   gradient  falling back to the parent's
       def measure_layer(node, box)
-        return measure_text(node, box) if node.source_type == :text
+        case node.source_type
+        when :file then measure_scaled(node, box)
+        when :text then measure_wrapped(node, box)
+        else measure_declared(node, box)
+        end
+      end
 
+      def measure_scaled(node, box)
         width  = declared(node, :width, box[0])
         height = declared(node, :height, box[1])
 
-        fit_size(intrinsic_size(node, box, width, height), width, height, node.fit, box)
+        fit_size(file_intrinsic(node), width, height, node.fit, box)
       end
 
-      # A text layer is exactly as big as the glyphs pango sets, and `width:` is
-      # where it breaks lines, not a box to fit them into. Running the wrapped
-      # size through a fit scaled the frame as if the glyphs had been scaled,
-      # and nothing scales them: 'Sale' at width: 600 measured 600x226 around
-      # 61x23 of ink, and align: :center put it 269px left of centre.
+      # Exactly what pango sets. Running the wrapped size through a fit, as a
+      # file's, scaled the frame as if the glyphs had been scaled, and nothing
+      # scales them: 'Sale' at width: 600 measured 600x226 around 61x23 of ink,
+      # and align: :center put it 269px left of centre.
       #
       # `:fill` wraps at the parent's width, as a percentage wraps at its share.
-      def measure_text(node, box)
-        refuse_text_box!(node)
-
+      # A height or a scaling fit would describe a box, and the DSL has already
+      # refused both.
+      def measure_wrapped(node, box)
         width = declared(node, :width, box[0])
         text = Render::Sources::Text.new(node, width: width == :fill ? box[0] : width)
         @texts[node] = text
@@ -102,29 +117,10 @@ module Loomy
         [text.mask.width, text.mask.height]
       end
 
-      # A box for text to be scaled into is something the renderer has never
-      # drawn, so declaring one is refused rather than laid out and then
-      # ignored. `fit: :contain` passes: it is the default spelled out.
-      def refuse_text_box!(node)
-        if node.height
-          raise LayoutError, "Cannot size text to height: #{node.height.inspect}: " \
-                             'a text layer is as tall as its lines, and width: sets where they break'
-        end
-        return unless EXACT_FITS.include?(node.fit)
-
-        raise LayoutError, "Cannot fit text with fit: #{node.fit.inspect}: " \
-                           'text is drawn at its font size, never scaled into a box'
-      end
-
-      # Natural size of the layer's source, before any fit is applied.
-      def intrinsic_size(node, box, width, height)
-        case node.source_type
-        when :file then file_intrinsic(node)
-        else
-          # Solids and gradients have no natural size: they are whatever they
-          # are asked to be, falling back to the parent box.
-          [numeric(width) || box[0] || 1, numeric(height) || box[1] || 1]
-        end
+      # An auto-sized canvas gives nothing to fall back to, and a 1px layer is
+      # at least visible as a mistake.
+      def measure_declared(node, box)
+        inner_box(node, box).map { |length| length || 1 }
       end
 
       def file_intrinsic(node)

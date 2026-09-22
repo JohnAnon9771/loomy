@@ -51,18 +51,6 @@ class LayoutTextTest < Minitest::Test
     assert_equal [frame.width, frame.height], [texts.fetch(node).mask.width, texts.fetch(node).mask.height]
   end
 
-  def test_text_refuses_a_height
-    error = assert_raises(Loomy::LayoutError) { layout(size: [900, 400]) { layer text: COPY, width: 600, height: 50 } }
-
-    assert_match(/width: sets where they break/, error.message)
-  end
-
-  def test_text_refuses_the_fits_that_would_scale_it
-    %i[cover stretch].each do |fit|
-      assert_raises(Loomy::LayoutError) { layout(size: [900, 400]) { layer text: COPY, width: 600, fit: fit } }
-    end
-  end
-
   def test_text_accepts_contain_because_it_is_the_default
     default, = layout(size: [900, 400]) { layer text: COPY, width: 600 }
     explicit, = layout(size: [900, 400]) { layer text: COPY, width: 600, fit: :contain }
